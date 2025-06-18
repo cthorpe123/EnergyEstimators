@@ -75,7 +75,7 @@ void Validate(){
   TCanvas* c = new TCanvas("c","c");
   TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
 
-  THStack* hs_NeutrinoEnergy = new THStack("hs",";Neutrino Energy (GeV);Shape");
+  THStack* hs_NeutrinoEnergy = new THStack("hs",";Neutrino Energy (GeV);d#sigma/dE_{#nu} (10^{-38} cm^{2}/GeV/Nucleus)");
   THStack* hs_W = new THStack("hs",";W (GeV);d#sigma/dW (10^{-38} cm^{2}/GeV/Nucleus)");
   THStack* hs_LeptonMom = new THStack("hs",";Lepton Momentum (GeV);d#sigma/dP (10^{-38} cm^{2}/GeV/Nucleus)");
   THStack* hs_LeptonAngle = new THStack("hs",";Lepton Cos(#theta);d#sigma/dCos(#theta) (10^{-38} cm^{2}/Nucleus)");
@@ -84,24 +84,31 @@ void Validate(){
 
     l->AddEntry(h_NeutrinoEnergy.at(i_f),Generators_v.at(i_f).c_str(),"L");
 
+    DivideByBinWidth(h_NeutrinoEnergy.at(i_f));
     h_NeutrinoEnergy.at(i_f)->SetLineWidth(2);
     h_NeutrinoEnergy.at(i_f)->SetLineColor(i_f+2);
     hs_NeutrinoEnergy->Add(h_NeutrinoEnergy.at(i_f));
 
-    Reweight(h_W.at(i_f));
+    DivideByBinWidth(h_W.at(i_f));
     h_W.at(i_f)->SetLineWidth(2);
     h_W.at(i_f)->SetLineColor(i_f+2);
     hs_W->Add(h_W.at(i_f));
 
-    Reweight(h_LeptonMom.at(i_f));
+    DivideByBinWidth(h_LeptonMom.at(i_f));
     h_LeptonMom.at(i_f)->SetLineWidth(2);
     h_LeptonMom.at(i_f)->SetLineColor(i_f+2);
     hs_LeptonMom->Add(h_LeptonMom.at(i_f));
 
-    Reweight(h_LeptonAngle.at(i_f));
+    DivideByBinWidth(h_LeptonAngle.at(i_f));
     h_LeptonAngle.at(i_f)->SetLineWidth(2);
     h_LeptonAngle.at(i_f)->SetLineColor(i_f+2);
     hs_LeptonAngle->Add(h_LeptonAngle.at(i_f));
+
+    std::cout << Generators_v.at(i_f) << std::endl;
+    std::cout << h_NeutrinoEnergy.at(i_f)->Integral("width") << std::endl;
+    std::cout << h_W.at(i_f)->Integral("width") << std::endl;
+    std::cout << h_LeptonMom.at(i_f)->Integral("width") << std::endl;
+    std::cout << h_LeptonAngle.at(i_f)->Integral("width") << std::endl;
 
   }
 

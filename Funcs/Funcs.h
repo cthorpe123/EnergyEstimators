@@ -1,6 +1,9 @@
 #ifndef _Funcs_h_
 #define _Funcs_h_
 
+////////////////////////////////////////////////////////////////////////////////
+// Assumed detection thresholds
+
 const std::map<int,std::pair<double,double>> thresholds = {
   {13,{0.1,5.0}},
   {2212,{0.3,1.0}},
@@ -8,6 +11,9 @@ const std::map<int,std::pair<double,double>> thresholds = {
   {111,{0.0,5.0}},
   {321,{0.2,5.0}}
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Table of particle masses 
 
 const std::map<int,double> masses = {
   {13,0.106},
@@ -24,6 +30,9 @@ const double ml = 0.106;
 const double mpi = 0.140;
 const double mpi0 = 0.135;
 
+////////////////////////////////////////////////////////////////////////////////
+// Visible hadronic invariant mass 
+
 double CalcW(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4_v){
 
   TLorentzVector p4_tot(0,0,0,0); 
@@ -37,6 +46,9 @@ double CalcW(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4
   return p4_tot.M();
 
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Get number of visible protons 
 
 int GetNProt(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4_v){
 
@@ -53,6 +65,9 @@ int GetNProt(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4
   return nprot;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Get the 3 momenta in descending order of magniture of a given particle type
+
 std::vector<TVector3> GetParticleMom(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4_v,const int target_pdg){
 
   std::vector<TVector3> mom;
@@ -68,6 +83,9 @@ std::vector<TVector3> GetParticleMom(const std::vector<int>* pdg_v,const std::ve
   return mom;
 
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Different neutrino energy calculators 
 
 enum estimators { kMuonKin , kMuonKinW , kMuonKinWNP , kPeLEELike , kPeLEELike0Pi , kTotalEDep , kMAX };
 const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinW" , "MuonKinWNP" , "PeLEELike" , "PeLEELike0Pi"  , "TotalEDep" };
@@ -98,6 +116,9 @@ double totaledepEnergy(const TLorentzVector* plepton,const std::vector<TVector3>
   return e;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Take a 2D histogram and normalise each vertical column to 1 
+
 void Normalise(TH2D* h){
   for(int i_x=1;i_x<h->GetNbinsX()+1;i_x++){
     double content = 0.0;
@@ -106,6 +127,9 @@ void Normalise(TH2D* h){
     for(int i_y=1;i_y<h->GetNbinsY()+1;i_y++) h->SetBinContent(i_x,i_y,h->GetBinContent(i_x,i_y)/content);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Get the bias and variance of a 2D hist as a function of the X axis variable 
 
 void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
 
@@ -140,6 +164,9 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Calculate the covariance matrix from systematic variation histograms 
+
 TMatrixDSym MakeCovariance(const std::vector<TH1D*> h_universes){
 
   int nbins = h_universes.at(0)->GetNbinsX();
@@ -148,8 +175,6 @@ TMatrixDSym MakeCovariance(const std::vector<TH1D*> h_universes){
 
   for(int i_b1=1;i_b1<nbins+1;i_b1++){
     for(int i_b2=1;i_b2<nbins+1;i_b2++){
-
-      std::cout << "i_b1=" << i_b1 << " i_b2=" << i_b2 << std::endl;
 
       double mean1 = 0.0;
       for(size_t i_u=0;i_u<h_universes.size();i_u++){
@@ -161,17 +186,12 @@ TMatrixDSym MakeCovariance(const std::vector<TH1D*> h_universes){
         mean2 += h_universes.at(i_u)->GetBinContent(i_b2)/h_universes.size();
       }
 
-      std::cout << "Cov calculation" << std::endl;
       double cov = 0.0;
       for(size_t i_u=0;i_u<h_universes.size();i_u++){
-        std::cout << "bin1=" << h_universes.at(i_u)->GetBinContent(i_b1) << " mean1=" << mean1 << " bin2=" << h_universes.at(i_u)->GetBinContent(i_b2) << " mean2=" << mean2 << "  cov=" << cov << std::endl;
         cov += (h_universes.at(i_u)->GetBinContent(i_b1) - mean1)*(h_universes.at(i_u)->GetBinContent(i_b2) - mean2);
       }
 
-      std::cout << "Check" << std::endl;
-      std::cout << mean1 << "  " << mean2 << "  " << cov << std::endl;    
       cov /= h_universes.size();
-      std::cout << mean1 << "  " << mean2 << "  " << cov << std::endl;    
       cov_mat[i_b1-1][i_b2-1] = cov;
 
     }
@@ -180,6 +200,10 @@ TMatrixDSym MakeCovariance(const std::vector<TH1D*> h_universes){
   return cov_mat;
 
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Take a true vs reco plot and draw the reco distribution, reweighted using
+// a distribution in the true variable 
 
 TH1D* MakeRewHist(const TH2D* h_true_reco,TH1D* h_true_ratio,std::string name){
 
@@ -202,7 +226,10 @@ TH1D* MakeRewHist(const TH2D* h_true_reco,TH1D* h_true_ratio,std::string name){
 
 }
 
-void Reweight(TH1D* h) {
+////////////////////////////////////////////////////////////////////////////////
+// Divide histogram by its bin widths - convert events into diff cross sections
+
+void DivideByBinWidth(TH1D* h) {
   int NBins = h->GetXaxis()->GetNbins();
   for (int i=0;i<NBins;i++){
     double CurrentEntry = h->GetBinContent(i+1);
@@ -212,6 +239,22 @@ void Reweight(TH1D* h) {
     h->SetBinContent(i+1,NewEntry); 
     h->SetBinError(i+1,NewError); 
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Calculate rates from cross sections 
+
+// Avagadro's number
+const double NA = 6.022e23;
+
+// number of mol of Ar40 in 1 ton
+const double molperton = 1000/0.004;
+ 
+// Gives rate per 1000 tons of detector mass per 10^21 POT
+// Inputs are nu/cm2/10^21 POT
+// XSec in 10^-38 cm^2
+double Rate(double flux,double xsec){
+  return 1e3*flux*xsec*NA*molperton*1e-38; 
 }
 
 #endif

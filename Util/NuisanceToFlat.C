@@ -2,7 +2,10 @@
 #pragma link C++ class std::vector<TLorentzVector>+;
 
 const std::string generator = "GiBUU";
-const int num_files = 99;
+
+// GiBUU ntuple is made of many files - scaling branch needs to be corrected
+// for this, use this variable to do so
+const int num_files = 1;
 
 void NuisanceToFlat(){
 
