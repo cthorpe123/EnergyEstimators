@@ -60,13 +60,13 @@ std::vector<TVector3> GetParticleMom(const std::vector<int>* pdg_v,const std::ve
     if(abs(pdg_v->at(i_p)) != target_pdg) continue;
     const double p = p4_v->at(i_p).Vect().Mag();   
     if(p > thresholds.at(target_pdg).first && p < thresholds.at(target_pdg).second)
-       mom.push_back(p4_v->at(i_p).Vect());
+      mom.push_back(p4_v->at(i_p).Vect());
   } 
 
   std::sort(mom.begin(),mom.end(),[](const TVector3& a,const TVector3& b){ return a.Mag() > b.Mag(); });
 
   return mom;
- 
+
 }
 
 enum estimators { kMuonKin , kMuonKinW , kMuonKinWNP , kPeLEELike , kPeLEELike0Pi , kTotalEDep , kMAX };
@@ -85,17 +85,17 @@ double ubooneEnergy(const TLorentzVector* plepton,const double& W,const int& npr
 }
 
 double peleeEnergy(const TLorentzVector* plepton,const std::vector<TVector3>& pprotons){
- double e = plepton->E();
- for(TVector3 p : pprotons) e += sqrt(p.Mag()*p.Mag() + Mp*Mp) - Mp;
- return e; 
+  double e = plepton->E();
+  for(TVector3 p : pprotons) e += sqrt(p.Mag()*p.Mag() + Mp*Mp) - Mp;
+  return e; 
 }
 
 double totaledepEnergy(const TLorentzVector* plepton,const std::vector<TVector3>& pprotons,const std::vector<TVector3>& ppions,const std::vector<TVector3>& ppizeros){
- double e = plepton->E();
- for(TVector3 p : pprotons) e += sqrt(p.Mag()*p.Mag() + Mp*Mp) - Mp;
- for(TVector3 p : ppions) e += sqrt(p.Mag()*p.Mag() + mpi*mpi);
- for(TVector3 p : ppizeros) e += sqrt(p.Mag()*p.Mag() + mpi0*mpi0);
- return e;
+  double e = plepton->E();
+  for(TVector3 p : pprotons) e += sqrt(p.Mag()*p.Mag() + Mp*Mp) - Mp;
+  for(TVector3 p : ppions) e += sqrt(p.Mag()*p.Mag() + mpi*mpi);
+  for(TVector3 p : ppizeros) e += sqrt(p.Mag()*p.Mag() + mpi0*mpi0);
+  return e;
 }
 
 void Normalise(TH2D* h){
@@ -138,6 +138,80 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
 
   }
 
+}
+
+TMatrixDSym MakeCovariance(const std::vector<TH1D*> h_universes){
+
+  int nbins = h_universes.at(0)->GetNbinsX();
+
+  TMatrixDSym cov_mat(nbins);
+
+  for(int i_b1=1;i_b1<nbins+1;i_b1++){
+    for(int i_b2=1;i_b2<nbins+1;i_b2++){
+
+      std::cout << "i_b1=" << i_b1 << " i_b2=" << i_b2 << std::endl;
+
+      double mean1 = 0.0;
+      for(size_t i_u=0;i_u<h_universes.size();i_u++){
+        mean1 += h_universes.at(i_u)->GetBinContent(i_b1)/h_universes.size();
+      }
+
+      double mean2 = 0.0;
+      for(size_t i_u=0;i_u<h_universes.size();i_u++){
+        mean2 += h_universes.at(i_u)->GetBinContent(i_b2)/h_universes.size();
+      }
+
+      std::cout << "Cov calculation" << std::endl;
+      double cov = 0.0;
+      for(size_t i_u=0;i_u<h_universes.size();i_u++){
+        std::cout << "bin1=" << h_universes.at(i_u)->GetBinContent(i_b1) << " mean1=" << mean1 << " bin2=" << h_universes.at(i_u)->GetBinContent(i_b2) << " mean2=" << mean2 << "  cov=" << cov << std::endl;
+        cov += (h_universes.at(i_u)->GetBinContent(i_b1) - mean1)*(h_universes.at(i_u)->GetBinContent(i_b2) - mean2);
+      }
+
+      std::cout << "Check" << std::endl;
+      std::cout << mean1 << "  " << mean2 << "  " << cov << std::endl;    
+      cov /= h_universes.size();
+      std::cout << mean1 << "  " << mean2 << "  " << cov << std::endl;    
+      cov_mat[i_b1-1][i_b2-1] = cov;
+
+    }
+  }
+
+  return cov_mat;
+
+}
+
+TH1D* MakeRewHist(const TH2D* h_true_reco,TH1D* h_true_ratio,std::string name){
+
+  double nbins = h_true_reco->GetNbinsY();
+  double low = h_true_reco->GetYaxis()->GetBinLowEdge(1);
+  double high = h_true_reco->GetYaxis()->GetBinLowEdge(nbins+1);
+
+  TH1D* h_reco = new TH1D(("h_rew_reco_"+name).c_str(),"",nbins,low,high);
+
+  for(int i_br=1;i_br<h_true_reco->GetNbinsY()+1;i_br++){
+    double events = 0.0;
+    for(int i_bt=1;i_bt<h_true_reco->GetNbinsX()+1;i_bt++){
+      double weight = h_true_ratio->GetBinContent(h_true_ratio->FindBin(h_true_reco->GetXaxis()->GetBinCenter(i_bt)));
+      events += h_true_reco->GetBinContent(i_bt,i_br)*weight;
+    }
+    h_reco->SetBinContent(i_br,events);
+  }
+
+  return h_reco;
+
+}
+
+void Reweight(TH1D* h) {
+  int NBins = h->GetXaxis()->GetNbins();
+  for (int i=0;i<NBins;i++){
+    double CurrentEntry = h->GetBinContent(i+1);
+    double NewEntry = CurrentEntry / h->GetBinWidth(i+1);
+    double CurrentError = h->GetBinError(i+1);
+    double NewError = CurrentError / h->GetBinWidth(i+1);
+    h->SetBinContent(i+1,NewEntry); 
+    h->SetBinError(i+1,NewError); 
+  }
 }
 
 #endif
