@@ -116,6 +116,23 @@ double totaledepEnergy(const TLorentzVector* plepton,const std::vector<TVector3>
   return e;
 }
 
+double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot,const std::vector<TVector3>& pprotons,const std::vector<TVector3>& ppions,const std::vector<TVector3>& ppizeros,int est){
+  if(est < 0 || est >= kMAX) throw std::invalid_argument("GetEnergy: invalid estimator");
+
+  switch(est){
+    case kMuonKin: return T2KEnergy(plepton);
+    case kMuonKinW: return T2KEnergyW(plepton,W);
+    case kMuonKinWNP: return ubooneEnergy(plepton,W,nprot);
+    case kPeLEELike: return peleeEnergy(plepton,pprotons);
+    case kPeLEELike0Pi: if(!ppions.size() && !ppizeros.size()) return peleeEnergy(plepton,pprotons); else return -1;
+    case kTotalEDep: return totaledepEnergy(plepton,pprotons,ppions,ppizeros);
+    default: return -1;
+  }
+
+  return -1;
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Take a 2D histogram and normalise each vertical column to 1 
 
@@ -231,13 +248,28 @@ TH1D* MakeRewHist(const TH2D* h_true_reco,TH1D* h_true_ratio,std::string name){
 
 void DivideByBinWidth(TH1D* h) {
   int NBins = h->GetXaxis()->GetNbins();
-  for (int i=0;i<NBins;i++){
-    double CurrentEntry = h->GetBinContent(i+1);
-    double NewEntry = CurrentEntry / h->GetBinWidth(i+1);
-    double CurrentError = h->GetBinError(i+1);
-    double NewError = CurrentError / h->GetBinWidth(i+1);
-    h->SetBinContent(i+1,NewEntry); 
-    h->SetBinError(i+1,NewError); 
+  for (int i=1;i<NBins+1;i++){
+    double CurrentEntry = h->GetBinContent(i);
+    double NewEntry = CurrentEntry / h->GetBinWidth(i);
+    double CurrentError = h->GetBinError(i);
+    double NewError = CurrentError / h->GetBinWidth(i);
+    h->SetBinContent(i,NewEntry); 
+    h->SetBinError(i,NewError); 
+  }
+}
+
+void DivideByBinWidth2D(TH2D* h) {
+  int NBinsX = h->GetNbinsX();
+  int NBinsY = h->GetNbinsY();
+  for (int i=1;i<NBinsX+1;i++){
+    for (int j=1;j<NBinsY+1;j++){
+      double CurrentEntry = h->GetBinContent(i,j);
+      double NewEntry = CurrentEntry / h->GetXaxis()->GetBinWidth(i) / h->GetYaxis()->GetBinWidth(j);
+      double CurrentError = h->GetBinError(i,j);
+      double NewError = CurrentError / h->GetXaxis()->GetBinWidth(i) / h->GetYaxis()->GetBinWidth(j);
+      h->SetBinContent(i,j,NewEntry); 
+      h->SetBinError(i,j,NewError); 
+    }
   }
 }
 
@@ -249,12 +281,65 @@ const double NA = 6.022e23;
 
 // number of mol of Ar40 in 1 ton
 const double molperton = 1000/0.004;
- 
+
 // Gives rate per 1000 tons of detector mass per 10^21 POT
 // Inputs are nu/cm2/10^21 POT
 // XSec in 10^-38 cm^2
 double Rate(double flux,double xsec){
   return 1e3*flux*xsec*NA*molperton*1e-38; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// nue appearance probability
+// equation 1 from https://arxiv.org/pdf/2006.16043
+
+const double theta23 = 0.699834;
+const double theta13 = 0.160875;
+const double theta12 = 0.594371;
+
+const double sin2theta23 = sin(theta23)*sin(theta23); // sin^2(theta23)
+const double sin2theta13 = sin(theta13)*sin(theta13); // sin^2(theta13)
+const double sin2theta12 = sin(theta12)*sin(theta12); // sin^2(theta23)
+const double sin22theta23 = sin(2*theta23)*sin(2*theta23); // sin^2(2theta23)
+const double sin22theta13 = sin(2*theta13)*sin(2*theta13); // sin^2(2theta13)
+const double sin22theta12 = sin(2*theta12)*sin(2*theta12); // sin^2(2theta12)
+const double cos2theta23 = cos(theta23)*cos(theta23); // cos^2(theta23)
+const double cos2theta13 = cos(theta13)*cos(theta13); // cos^2(theta13)
+
+const double deltamsq12 = 0.759e-4; // delta m2 12 in eV^2
+const double deltamsq13 = 23.2e-4; // delta m2 13 in eV^2
+const double deltamsq23 = deltamsq13; // delta m2 23 in eV^2 (assuming normal hierarchy)
+
+const double L = 1285; // baseline in km
+const double GF = 1.166e-5; // Fermi constant in GeV^-2
+const double Ne = 2.9805e23; // Mean electrons/cm3 in earth crust from  https://arxiv.org/pdf/1707.02322 
+const double rho = 2.7; // mean density of earths crust in g/cm3
+const double aL = (rho/3.0)*L/3500; // matter effect term
+
+double nue_app_prob(double E,double deltaCP=0){
+
+  double delta31 = 1.267*deltamsq13*L/E;
+  double delta21 = 1.267*deltamsq12*L/E;
+
+  double P = sin2theta23*sin22theta13*pow(sin(delta31 - aL),2)*delta31*delta31/pow(delta31 - aL,2)
+    + sqrt(sin22theta23)*sqrt(sin22theta13)*sqrt(sin22theta12)*sin(delta31 - aL)*delta31/(delta31 - aL)
+    *(sin(aL)/aL)*delta21*cos(delta31 + deltaCP)
+    + cos2theta23*sin22theta12*pow(sin(aL),2)/aL/aL*delta21*delta21; 
+
+  return P;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// numu disappearance probability
+// equation 1 from https://www.nature.com/articles/s41586-020-2177-0 
+// Patrick Dunne (Patrick DUNE?) tells me this is good approximation at DUNE's baseline/matter effect
+
+double numu_surv_prob(double E,double deltaCP=0){
+
+  double delta23 = 1.267*deltamsq23*L/E;
+  return 1 - 4*cos2theta13*sin2theta23*(1-cos2theta13*sin2theta23)*sin(delta23)*sin(delta23);
+
 }
 
 #endif

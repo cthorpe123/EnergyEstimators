@@ -5,7 +5,7 @@ const std::string generator = "GiBUU";
 
 // GiBUU ntuple is made of many files - scaling branch needs to be corrected
 // for this, use this variable to do so
-const int num_files = 1;
+const int num_files = 99;
 
 void NuisanceToFlat(){
 
@@ -38,7 +38,7 @@ void NuisanceToFlat(){
 
   TFile* f_out = new TFile((generator+"Events_tmp.root").c_str(),"RECREATE"); 
   TTree* t_out = new TTree("eventtree_tmp","eventtree_tmp"); 
-  
+
   Double_t scale;
   Double_t weight;
   Double_t nu_e;
@@ -96,12 +96,14 @@ void NuisanceToFlat(){
         lepton_pdg = pdg_in[i_p];
         lepton_p4 = TLorentzVector(px[i_p],py[i_p],pz[i_p],E[i_p]);
         nlep++;
-      } 
-      pdg.push_back(pdg_in[i_p]);
-      p4_x.push_back(px[i_p]);
-      p4_y.push_back(py[i_p]);
-      p4_z.push_back(pz[i_p]);
-      p4_E.push_back(E[i_p]);
+      }
+      else { 
+        pdg.push_back(pdg_in[i_p]);
+        p4_x.push_back(px[i_p]);
+        p4_y.push_back(py[i_p]);
+        p4_z.push_back(pz[i_p]);
+        p4_E.push_back(E[i_p]);
+      }
     }   
 
     if(nlep > 1){

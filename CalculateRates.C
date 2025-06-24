@@ -17,6 +17,8 @@ void CalculateRates(){
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
   std::vector<double> xsec(InputFiles_v.size(),0.0);
+  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy;
+  std::vector<std::vector<TH1D*>> h_RecoEnergy;
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -45,9 +47,17 @@ void CalculateRates(){
     t->SetBranchAddress("pdg",&pdg);
     t->SetBranchAddress("p4",&p4);
 
+    h_TrueEnergy_RecoEnergy.push_back(std::vector<TH2D*>());
+    h_RecoEnergy.push_back(std::vector<TH1D*>());
+
+    for(std::string estimator : estimators_str){
+      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"Events/KT/GeV^{2}/10^{21} POT;True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV);",100,0.1,8.0,100,0.1,8.0));
+      h_RecoEnergy.back().push_back(new TH1D((generator+"_RecoEnergy_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",100,0.1,8.0));
+    }
+
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 10000) break;
+      if(ievent > 50000) break;
       if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -61,18 +71,50 @@ void CalculateRates(){
       std::vector<TVector3> pion_mom = GetParticleMom(pdg,p4,211);
       std::vector<TVector3> pizero_mom = GetParticleMom(pdg,p4,111);
 
-      //if(nprot < 1 || pion_mom.size() || pizero_mom.size()) continue;
-
       if(generator != "GiBUU") weight = 1;
       weight *= scale*1e38*40;
 
+      if(nprot < 1) continue;
+
       xsec.at(i_f) += weight;
 
+      for(int i_e=0;i_e<kMAX;i_e++){
+        double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,i_e);
+        h_TrueEnergy_RecoEnergy.back().at(i_e)->Fill(nu_e,nu_e_reco,weight);
+        h_RecoEnergy.back().at(i_e)->Fill(nu_e_reco,weight);
+      }
+
+
+
     }
-   
+
+    for(size_t i_e=0;i_e<h_TrueEnergy_RecoEnergy.back().size();i_e++){
+      DivideByBinWidth(h_RecoEnergy.back().at(i_e)); 
+      DivideByBinWidth2D(h_TrueEnergy_RecoEnergy.back().at(i_e)); 
+    }
+
   }
 
-  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++) std::cout << Generators_v.at(i_f) << "  Cross Section = " << xsec.at(i_f) << " 1e-38 cm^2  Rate = " << Rate(total_flux,xsec.at(i_f)) << " events/1000 tons/10^21 POT" << std::endl;
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++) std::cout << Generators_v.at(i_f) << "  Cross Section = " << xsec.at(i_f) << " 1e-38 cm^2  Rate = " << Rate(total_flux,xsec.at(i_f)) << " events/KT/10^21 POT" << std::endl;
 
+
+  gSystem->Exec("mkdir -p Plots/RatePlots/");
+  TCanvas* c = new TCanvas("c","c");
+  TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
+
+  for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+    for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+
+      for(int i=1;i<h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->GetNbinsX()+1;i++)
+        for(int j=1;j<h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->GetNbinsY()+1;j++)
+          h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->SetBinContent(i,j,Rate(total_flux,h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->GetBinContent(i,j)));
+     
+      h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->Draw("colz");
+      h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->SetStats(0);
+      c->Print(("Plots/RatePlots/Rate_TrueEnergy_RecoEnergy_" + estimators_str.at(i_e) + "_" + Generators_v.at(i_f) + ".png").c_str()); 
+      c->Clear();
+    }
+  }
+  
 
 }

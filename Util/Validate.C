@@ -68,6 +68,13 @@ void Validate(){
       h_LeptonAngle.back()->Fill(lepton_p4->Vect().CosTheta(),weight); 
       h_W.back()->Fill(p4_tot.M(),weight);
     }
+   
+    /* 
+    h_NeutrinoEnergy.back()->Scale(1.0/h_NeutrinoEnergy.back()->Integral());
+    h_LeptonMom.back()->Scale(1.0/h_LeptonMom.back()->Integral());
+    h_LeptonAngle.back()->Scale(1.0/h_LeptonAngle.back()->Integral());
+    h_W.back()->Scale(1.0/h_W.back()->Integral());
+    */
 
   }
 

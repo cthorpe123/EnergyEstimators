@@ -59,7 +59,6 @@ void EnergyEstimatorPlots(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      if(ievent > 10000) break;
       if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -77,33 +76,12 @@ void EnergyEstimatorPlots(){
 
       if(nprot < 1) continue;
 
-      double Erec_MuonKin = T2KEnergy(lepton_p4);
-      double Erec_MuonKinW = T2KEnergyW(lepton_p4,W);
-      double Erec_MuonKinWNP = ubooneEnergy(lepton_p4,W,nprot);
-      double Erec_PeLEELike = peleeEnergy(lepton_p4,proton_mom);
-      double Erec_PeLEELike0Pi = peleeEnergy(lepton_p4,proton_mom);
-      double Erec_TotalEDep = totaledepEnergy(lepton_p4,proton_mom,pion_mom,pizero_mom);
-
-      h_TrueEnergy_RecoEnergy.back().at(kMuonKin)->Fill(nu_e,Erec_MuonKin,weight);
-      h_TrueEnergy_RecoEnergy.back().at(kMuonKinW)->Fill(nu_e,Erec_MuonKinW,weight);
-      h_TrueEnergy_RecoEnergy.back().at(kMuonKinWNP)->Fill(nu_e,Erec_MuonKinWNP,weight);
-      h_TrueEnergy_RecoEnergy.back().at(kPeLEELike)->Fill(nu_e,Erec_PeLEELike,weight);
-      if(!pion_mom.size() && !pizero_mom.size()) h_TrueEnergy_RecoEnergy.back().at(kPeLEELike0Pi)->Fill(nu_e,Erec_PeLEELike,weight);
-      h_TrueEnergy_RecoEnergy.back().at(kTotalEDep)->Fill(nu_e,Erec_TotalEDep,weight);
-
-      h_RecoEnergy.back().at(kMuonKin)->Fill(Erec_MuonKin,weight);
-      h_RecoEnergy.back().at(kMuonKinW)->Fill(Erec_MuonKinW,weight);
-      h_RecoEnergy.back().at(kMuonKinWNP)->Fill(Erec_MuonKinWNP,weight);
-      h_RecoEnergy.back().at(kPeLEELike)->Fill(Erec_PeLEELike,weight);
-      if(!pion_mom.size() && !pizero_mom.size()) h_RecoEnergy.back().at(kPeLEELike0Pi)->Fill(Erec_PeLEELike0Pi,weight);
-      h_RecoEnergy.back().at(kTotalEDep)->Fill(Erec_TotalEDep,weight);
-
-      h_RecoEnergy_Osc.back().at(kMuonKin)->Fill(Erec_MuonKin,weight*osc_weight);
-      h_RecoEnergy_Osc.back().at(kMuonKinW)->Fill(Erec_MuonKinW,weight*osc_weight);
-      h_RecoEnergy_Osc.back().at(kMuonKinWNP)->Fill(Erec_MuonKinWNP,weight*osc_weight);
-      h_RecoEnergy_Osc.back().at(kPeLEELike)->Fill(Erec_PeLEELike,weight*osc_weight);
-      if(!pion_mom.size() && !pizero_mom.size()) h_RecoEnergy_Osc.back().at(kPeLEELike0Pi)->Fill(Erec_PeLEELike0Pi,weight*osc_weight);
-      h_RecoEnergy_Osc.back().at(kTotalEDep)->Fill(Erec_TotalEDep,weight*osc_weight);
+      for(int i_e=0;i_e<kMAX;i_e++){
+        double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,i_e);
+        h_TrueEnergy_RecoEnergy.back().at(i_e)->Fill(nu_e,nu_e_reco,weight);
+        h_RecoEnergy.back().at(i_e)->Fill(nu_e_reco,weight);
+        h_RecoEnergy_Osc.back().at(i_e)->Fill(nu_e_reco,weight*osc_weight);
+      }
 
     }
 
@@ -235,17 +213,6 @@ void EnergyEstimatorPlots(){
     delete hs_Ratio;
 
   }
-
-  // Build covariance matrices 
-  for(size_t i_e=0;i_e<estimators_str.size();i_e++){
-    std::vector<TH1D*> h_univ;
-    for(size_t i_f=0;i_f<InputFiles_v.size();i_f++)
-      h_univ.push_back(h_RecoEnergy.at(i_f).at(i_e));
-        
-    TH2D* h_Cov = MakeCovariance(h_univ);     
-    h_Cov->SetName(("Covariance"+estimators_str.at(i_e)).c_str());
-
-  } 
 
   
 
