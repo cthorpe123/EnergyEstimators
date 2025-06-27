@@ -91,15 +91,15 @@ enum estimators { kMuonKin , kMuonKinW , kMuonKinWNP , kPeLEELike , kPeLEELike0P
 const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinW" , "MuonKinWNP" , "PeLEELike" , "PeLEELike0Pi"  , "TotalEDep" };
 
 double T2KEnergy(const TLorentzVector* plepton){
-  return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - ml*ml + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
+  return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
 }
 
 double T2KEnergyW(const TLorentzVector* plepton,const double& W){
-  return (W*W - (Mn - Eb)*(Mn - Eb) - ml*ml + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
+  return (W*W - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
 }
 
 double ubooneEnergy(const TLorentzVector* plepton,const double& W,const int& nprot){
-  return (W*W - nprot*nprot*(Mn - Eb)*(Mn - Eb) - ml*ml + nprot*2*(Mn - Eb)*plepton->E())/(2*(nprot*Mn - nprot*Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
+  return (W*W - nprot*nprot*(Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + nprot*2*(Mn - Eb)*plepton->E())/(2*(nprot*Mn - nprot*Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
 }
 
 double peleeEnergy(const TLorentzVector* plepton,const std::vector<TVector3>& pprotons){
