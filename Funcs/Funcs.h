@@ -29,6 +29,8 @@ const double Eb = 0.03;
 const double ml = 0.106;
 const double mpi = 0.140;
 const double mpi0 = 0.135;
+const double MA = 22*Mn + 18*Mp - 0.34381;
+const double MA1 = MA - Mn;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Visible hadronic invariant mass 
@@ -87,8 +89,8 @@ std::vector<TVector3> GetParticleMom(const std::vector<int>* pdg_v,const std::ve
 ////////////////////////////////////////////////////////////////////////////////
 // Different neutrino energy calculators 
 
-enum estimators { kMuonKin , kMuonKinW , kMuonKinWNP , kPeLEELike , kPeLEELike0Pi , kTotalEDep , kMAX };
-const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinW" , "MuonKinWNP" , "PeLEELike" , "PeLEELike0Pi"  , "TotalEDep" };
+enum estimators { kMuonKin , kMuonKinW , kMuonKinWNP , kPeLEELike , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMAX };
+const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinW" , "MuonKinWNP" , "PeLEELike" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
 
 double T2KEnergy(const TLorentzVector* plepton){
   return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
@@ -116,6 +118,16 @@ double totaledepEnergy(const TLorentzVector* plepton,const std::vector<TVector3>
   return e;
 }
 
+double sfmethodEnergy(const TLorentzVector* plepton,const std::vector<TVector3>& pprotons){
+  const TVector3& prot = pprotons.at(0);
+  const double Ep = sqrt(prot.Mag()*prot.Mag() + Mp*Mp); 
+  double pt2 = (prot + plepton->Vect()).Perp2();
+  double pL = (pow((MA + plepton->Pz() + prot.Z() - plepton->E() - Ep),2) - pt2 - MA1*MA1)/2/(MA + plepton->Pz() + prot.Z() - plepton->E() - Ep); 
+
+  return plepton->Pz() + prot.Z() - pL;
+
+}
+
 double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot,const std::vector<TVector3>& pprotons,const std::vector<TVector3>& ppions,const std::vector<TVector3>& ppizeros,int est){
   if(est < 0 || est >= kMAX) throw std::invalid_argument("GetEnergy: invalid estimator");
 
@@ -126,6 +138,7 @@ double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot
     case kPeLEELike: return peleeEnergy(plepton,pprotons);
     case kPeLEELike0Pi: if(!ppions.size() && !ppizeros.size()) return peleeEnergy(plepton,pprotons); else return -1;
     case kTotalEDep: return totaledepEnergy(plepton,pprotons,ppions,ppizeros);
+    case kSFMethod: if(pprotons.size() == 1 && !ppions.size() && !ppizeros.size()) return sfmethodEnergy(plepton,pprotons); else return -1;
     default: return -1;
   }
 
@@ -287,59 +300,6 @@ const double molperton = 1000/0.004;
 // XSec in 10^-38 cm^2
 double Rate(double flux,double xsec){
   return 1e3*flux*xsec*NA*molperton*1e-38; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// nue appearance probability
-// equation 1 from https://arxiv.org/pdf/2006.16043
-
-const double theta23 = 0.699834;
-const double theta13 = 0.160875;
-const double theta12 = 0.594371;
-
-const double sin2theta23 = sin(theta23)*sin(theta23); // sin^2(theta23)
-const double sin2theta13 = sin(theta13)*sin(theta13); // sin^2(theta13)
-const double sin2theta12 = sin(theta12)*sin(theta12); // sin^2(theta23)
-const double sin22theta23 = sin(2*theta23)*sin(2*theta23); // sin^2(2theta23)
-const double sin22theta13 = sin(2*theta13)*sin(2*theta13); // sin^2(2theta13)
-const double sin22theta12 = sin(2*theta12)*sin(2*theta12); // sin^2(2theta12)
-const double cos2theta23 = cos(theta23)*cos(theta23); // cos^2(theta23)
-const double cos2theta13 = cos(theta13)*cos(theta13); // cos^2(theta13)
-
-const double deltamsq12 = 0.759e-4; // delta m2 12 in eV^2
-const double deltamsq13 = 23.2e-4; // delta m2 13 in eV^2
-const double deltamsq23 = deltamsq13; // delta m2 23 in eV^2 (assuming normal hierarchy)
-
-const double L = 1285; // baseline in km
-const double GF = 1.166e-5; // Fermi constant in GeV^-2
-const double Ne = 2.9805e23; // Mean electrons/cm3 in earth crust from  https://arxiv.org/pdf/1707.02322 
-const double rho = 2.7; // mean density of earths crust in g/cm3
-const double aL = (rho/3.0)*L/3500; // matter effect term
-
-double nue_app_prob(double E,double deltaCP=0){
-
-  double delta31 = 1.267*deltamsq13*L/E;
-  double delta21 = 1.267*deltamsq12*L/E;
-
-  double P = sin2theta23*sin22theta13*pow(sin(delta31 - aL),2)*delta31*delta31/pow(delta31 - aL,2)
-    + sqrt(sin22theta23)*sqrt(sin22theta13)*sqrt(sin22theta12)*sin(delta31 - aL)*delta31/(delta31 - aL)
-    *(sin(aL)/aL)*delta21*cos(delta31 + deltaCP)
-    + cos2theta23*sin22theta12*pow(sin(aL),2)/aL/aL*delta21*delta21; 
-
-  return P;
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// numu disappearance probability
-// equation 1 from https://www.nature.com/articles/s41586-020-2177-0 
-// Patrick Dunne (Patrick DUNE?) tells me this is good approximation at DUNE's baseline/matter effect
-
-double numu_surv_prob(double E,double deltaCP=0){
-
-  double delta23 = 1.267*deltamsq23*L/E;
-  return 1 - 4*cos2theta13*sin2theta23*(1-cos2theta13*sin2theta23)*sin(delta23)*sin(delta23);
-
 }
 
 #endif

@@ -1,7 +1,7 @@
 #include "Funcs/Funcs.h"
 #include "TLorentzVector.h"
 
-bool nue_mode = true;
+bool nue_mode = false;
 
 void CalculateResponseMatrices(){
 
@@ -52,7 +52,7 @@ void CalculateResponseMatrices(){
     h_TrueEnergy_RecoEnergy.push_back(std::vector<TH2D*>());
 
     for(std::string estimator : estimators_str){
-      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"Events/KT/GeV^{2}/10^{21} POT;True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV);",100,0.1,8.0,100,0.1,8.0));
+      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),";True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV);",100,0.2,8.0,100,0.2,8.0));
     }
 
     int target_nu_pdg = 14;
@@ -78,6 +78,7 @@ void CalculateResponseMatrices(){
       weight *= scale*1e38*40;
 
       if(nprot < 1) continue;
+      //if(proton_mom.size() != 1 || pion_mom.size() || pizero_mom.size()) continue;
 
       for(int i_e=0;i_e<kMAX;i_e++){
         double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,i_e);
@@ -104,6 +105,7 @@ void CalculateResponseMatrices(){
       std::string name;
       if(!nue_mode) name = "Plots/ResponsePlots/NuMu_TrueEnergy_RecoEnergy_" + estimators_str.at(i_e) + "_" + Generators_v.at(i_f) + ".png";
       else name = "Plots/ResponsePlots/Nue_TrueEnergy_RecoEnergy_" + estimators_str.at(i_e) + "_" + Generators_v.at(i_f) + ".png";
+      h_TrueEnergy_RecoEnergy.at(i_f).at(i_e)->SetContour(1000);
       c->Print(name.c_str()); 
       c->Clear();
     }

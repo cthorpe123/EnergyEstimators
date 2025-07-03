@@ -31,9 +31,9 @@ void EnergyEstimatorPlots(){
     h_RecoEnergy.push_back(std::vector<TH1D*>());
     h_RecoEnergy_Osc.push_back(std::vector<TH1D*>());
     for(std::string estimator : estimators_str){
-      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),";True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV)",50,0.1,7.0,50,0.1,7.0));
-      h_RecoEnergy.back().push_back(new TH1D((generator+"_RecoEnergy_"+estimator).c_str(),";Estimated Neutrino Energy (GeV)",50,0.1,7.0));
-      h_RecoEnergy_Osc.back().push_back(new TH1D((generator+"_RecoEnergy_Osc_"+estimator).c_str(),";Estimated Neutrino Energy (GeV)",50,0.1,7.0));
+      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),";True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV)",50,0.2,7.0,50,0.2,7.0));
+      h_RecoEnergy.back().push_back(new TH1D((generator+"_RecoEnergy_"+estimator).c_str(),";Estimated Neutrino Energy (GeV)",50,0.2,7.0));
+      h_RecoEnergy_Osc.back().push_back(new TH1D((generator+"_RecoEnergy_Osc_"+estimator).c_str(),";Estimated Neutrino Energy (GeV)",50,0.2,7.0));
     }
 
     TFile* f = TFile::Open(InputFiles_v.at(i_f).c_str()) ;
@@ -75,6 +75,7 @@ void EnergyEstimatorPlots(){
       std::vector<TVector3> pizero_mom = GetParticleMom(pdg,p4,111);
 
       if(nprot < 1) continue;
+      //if(proton_mom.size() != 1 || pion_mom.size() || pizero_mom.size()) continue;
 
       for(int i_e=0;i_e<kMAX;i_e++){
         double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,i_e);
