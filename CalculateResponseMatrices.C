@@ -16,8 +16,8 @@ void CalculateResponseMatrices(){
   std::cout << "Total Flux: " << total_flux << " nu/cm^2/10^21 POT" << std::endl; 
 
   std::vector<std::string> InputFiles_v;
-  if(!nue_mode) InputFiles_v = {"rootfiles/GENIEEvents.root","rootfiles/NuWroEvents.root","rootfiles/NEUTEvents.root","rootfiles/GiBUUEvents.root"};
-  else InputFiles_v = {"rootfiles/GENIE_NueEvents.root","rootfiles/NuWro_NueEvents.root","rootfiles/NEUT_NueEvents.root","rootfiles/GiBUU_NueEvents.root"};
+  if(!nue_mode) InputFiles_v = {"GENIEEvents.root","NuWroEvents.root","NEUTEvents.root","GiBUUEvents.root"};
+  else InputFiles_v = {"GENIE_NueEvents.root","NuWro_NueEvents.root","NEUT_NueEvents.root","GiBUU_NueEvents.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
   std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy;
@@ -26,7 +26,7 @@ void CalculateResponseMatrices(){
 
     std::string generator = Generators_v.at(i_f);    
 
-    TFile* f = TFile::Open(InputFiles_v.at(i_f).c_str()) ;
+    TFile* f = TFile::Open(("/exp/uboone/data/users/cthorpe/DIS/DUNE/rootfiles/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
 
     Double_t scale;
@@ -52,7 +52,7 @@ void CalculateResponseMatrices(){
     h_TrueEnergy_RecoEnergy.push_back(std::vector<TH2D*>());
 
     for(std::string estimator : estimators_str){
-      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),";True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV);",100,0.2,8.0,100,0.2,8.0));
+      h_TrueEnergy_RecoEnergy.back().push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),";True Neutrino Energy (GeV);Estimated Neutrino Energy (GeV);",200,0.2,8.0,200,0.2,8.0));
     }
 
     int target_nu_pdg = 14;

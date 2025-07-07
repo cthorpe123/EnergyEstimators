@@ -89,8 +89,8 @@ std::vector<TVector3> GetParticleMom(const std::vector<int>* pdg_v,const std::ve
 ////////////////////////////////////////////////////////////////////////////////
 // Different neutrino energy calculators 
 
-enum estimators { kMuonKin , kMuonKinW , kMuonKinWNP , kPeLEELike , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMAX };
-const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinW" , "MuonKinWNP" , "PeLEELike" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
+enum estimators { kMuonKin , kMuonKinWNP , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMAX };
+const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
 
 double T2KEnergy(const TLorentzVector* plepton){
   return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
@@ -133,9 +133,9 @@ double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot
 
   switch(est){
     case kMuonKin: return T2KEnergy(plepton);
-    case kMuonKinW: return T2KEnergyW(plepton,W);
+    //case kMuonKinW: return T2KEnergyW(plepton,W);
     case kMuonKinWNP: return ubooneEnergy(plepton,W,nprot);
-    case kPeLEELike: return peleeEnergy(plepton,pprotons);
+    //case kPeLEELike: return peleeEnergy(plepton,pprotons);
     case kPeLEELike0Pi: if(!ppions.size() && !ppizeros.size()) return peleeEnergy(plepton,pprotons); else return -1;
     case kTotalEDep: return totaledepEnergy(plepton,pprotons,ppions,ppizeros);
     case kSFMethod: if(pprotons.size() == 1 && !ppions.size() && !ppizeros.size()) return sfmethodEnergy(plepton,pprotons); else return -1;
@@ -163,15 +163,10 @@ void Normalise(TH2D* h){
 
 void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
 
-  double nbins = h_Data->GetNbinsX();
-  double low = h_Data->GetXaxis()->GetBinLowEdge(1);
-  double high = h_Data->GetXaxis()->GetBinLowEdge(nbins+1);
-
-  std::string name = h_Data->GetName();
-  h_Bias = new TH1D((name + "_Bias").c_str(),";;Frac Bias",nbins,low,high);
-  h_Variance = new TH1D((name + "_Variance").c_str(),";;Frac Variance",nbins,low,high);
+  int nbins = h_Data->GetNbinsX();
 
   for(int i=1;i<nbins+1;i++){
+    std::cout << "Getting bias/variance for bin " << i << std::endl;
     double mean = 0.0;
     double events = 0.0;
     for(int j=1;j<nbins+1;j++){
@@ -179,15 +174,22 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
       events += h_Data->GetBinContent(i,j);
     }
 
-    h_Bias->SetBinContent(i,(mean/events - h_Bias->GetBinCenter(i))/h_Bias->GetBinCenter(i));
+    mean /= events;
+    std::cout << "mean=" << mean << std::endl;
+
+    h_Bias->SetBinContent(i,(mean - h_Bias->GetBinCenter(i))/h_Bias->GetBinCenter(i));
     if(events == 0.0) h_Bias->SetBinContent(i,0);
 
     double var = 0.0; 
     for(int j=1;j<nbins+1;j++){
       var += (h_Data->GetYaxis()->GetBinCenter(j) - mean)*(h_Data->GetYaxis()->GetBinCenter(j) - mean)*h_Data->GetBinContent(i,j);
+      std::cout << "var = "  << h_Data->GetYaxis()->GetBinCenter(j) << " - " << mean << "*" << h_Data->GetBinContent(i,j) << std::endl;
     }
 
-    h_Variance->SetBinContent(i,var/mean/mean/events/events);
+    var /= events;    
+    
+    std::cout << var << std::endl;
+    h_Variance->SetBinContent(i,var/mean/mean);
     if(events == 0.0) h_Variance->SetBinContent(i,0);
 
   }

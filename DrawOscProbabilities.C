@@ -1,6 +1,9 @@
 #include "Funcs/Funcs.h"
+#include "Funcs/OscFitter.h"
 
 void DrawOscProbabilities(){
+
+  OscModel osc_model;
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("Flux/DUNE_FD_Flux.root");
@@ -17,10 +20,19 @@ void DrawOscProbabilities(){
   double e = 0.2;
   for(int i=0;i<1000;i++){
     E.push_back(e);
-    nue_app.push_back(nue_app_prob(e));
-    nue_app_ppi2.push_back(nue_app_prob(e,3.141/2));
-    nue_app_mpi2.push_back(nue_app_prob(e,-3.141/2));
-    numu_surv.push_back(numu_surv_prob(e));
+
+    osc_model.SetDeltaCP(0);
+    nue_app.push_back(osc_model.NueAppProb(e));
+
+    osc_model.SetDeltaCP(3.141/2);
+    nue_app_ppi2.push_back(osc_model.NueAppProb(e));
+
+    osc_model.SetDeltaCP(-3.141/2);
+    nue_app_mpi2.push_back(osc_model.NueAppProb(e));
+
+    osc_model.SetDeltaCP(0);
+    numu_surv.push_back(osc_model.NuMuSurvProb(e));
+
     e += 0.01;
   }
 

@@ -71,6 +71,7 @@ class OscModel {
   void SetDeltaMSq13(double in_deltamsq13);
   void SetDeltaMSq23(double in_deltamsq23);
   void SetDeltaCP(double in_deltaCP);
+  void SetNuMuDisAmp(double amp);
 
   double NueAppProb(double E) const;
   double NuMuSurvProb(double E) const;
@@ -119,6 +120,10 @@ void OscModel::SetDeltaMSq23(double in_deltamsq23){
 
 void OscModel::SetDeltaCP(double in_deltaCP){
   deltaCP = in_deltaCP;
+}
+
+void OscModel::SetNuMuDisAmp(double amp){
+  numu_dis_amp = amp;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
