@@ -70,7 +70,7 @@ void DeltaM2Plot(){
   TCanvas* c = new TCanvas("c","c");
   TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
 
-  std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT"};
+  std::vector<std::string> Generators_v = {"GiBUU","GENIE","NuWro","NEUT"};
 
   // Get all of the true vs reco spectra
 
@@ -96,8 +96,7 @@ void DeltaM2Plot(){
   std::vector<std::vector<TH1D*>> h_fit_results(estimators_str.size(),std::vector<TH1D*>());
   for(size_t i_e=0;i_e<estimators_str.size();i_e++)
     for(size_t i_g=0;i_g<Generators_v.size();i_g++)
-      h_fit_results.at(i_e).push_back(new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+Generators_v.at(i_g)).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",100,0.8*c_osc::deltamsq23,1.2*c_osc::deltamsq23));
- 
+      h_fit_results.at(i_e).push_back(new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+Generators_v.at(i_g)).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",100,0.9*c_osc::deltamsq23,1.1*c_osc::deltamsq23));
 
   double min_fit_ratio = 1;
   double max_fit_ratio = 1;

@@ -26,7 +26,7 @@ void CalculateResponseMatrices(){
 
     std::string generator = Generators_v.at(i_f);    
 
-    TFile* f = TFile::Open(("/exp/uboone/data/users/cthorpe/DIS/DUNE/rootfiles/"+InputFiles_v.at(i_f)).c_str());
+    TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
 
     Double_t scale;
@@ -65,23 +65,22 @@ void CalculateResponseMatrices(){
       t->GetEntry(ievent);
 
       if(generator != "GiBUU") weight = 1.0;
+      weight *= scale*1e38*40;
 
       if(abs(nu_pdg) != target_nu_pdg || ccnc != 1) continue;
 
       double W = CalcW(pdg,p4);
       int nprot = GetNProt(pdg,p4);
       std::vector<TVector3> proton_mom = GetParticleMom(pdg,p4,2212);
+      std::vector<TVector3> neutron_mom = GetNeutronMom(pdg,p4);
       std::vector<TVector3> pion_mom = GetParticleMom(pdg,p4,211);
       std::vector<TVector3> pizero_mom = GetParticleMom(pdg,p4,111);
-
-      if(generator != "GiBUU") weight = 1;
-      weight *= scale*1e38*40;
 
       if(nprot < 1) continue;
       //if(proton_mom.size() != 1 || pion_mom.size() || pizero_mom.size()) continue;
 
       for(int i_e=0;i_e<kMAX;i_e++){
-        double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,i_e);
+        double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,neutron_mom,i_e);
         h_TrueEnergy_RecoEnergy.back().at(i_e)->Fill(nu_e,nu_e_reco,weight);
       }
 

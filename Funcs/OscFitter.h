@@ -20,7 +20,8 @@ namespace c_osc {
 
   const double deltamsq12 = 0.759e-4; // delta m2 12 in eV^2
   const double deltamsq13 = 23.2e-4; // delta m2 13 in eV^2
-  const double deltamsq23 = deltamsq13; // delta m2 23 in eV^2 (assuming normal hierarchy)
+  const double deltamsq23 = 2.451e-3; // delta m2 23 in eV^2 (assuming normal hierarchy)
+  const double deltamsq23_sigma = 0.026e-3; // delta m2 23 in eV^2 (assuming normal hierarchy)
 
   const double L = 1285; // baseline in km
   const double GF = 1.166e-5; // Fermi constant in GeV^-2
