@@ -18,12 +18,13 @@ void Normalise(TH2D* h){
 
 void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
 
-  int nbins = h_Data->GetNbinsX();
+  int nbins_x = h_Data->GetNbinsX();
+  int nbins_y = h_Data->GetNbinsY();
 
-  for(int i=1;i<nbins+1;i++){
+  for(int i=1;i<nbins_x+1;i++){
     double mean = 0.0;
     double events = 0.0;
-    for(int j=1;j<nbins+1;j++){
+    for(int j=1;j<nbins_y+1;j++){
       mean += h_Data->GetYaxis()->GetBinCenter(j)*h_Data->GetBinContent(i,j);
       events += h_Data->GetBinContent(i,j);
     }
@@ -34,7 +35,7 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
     if(events == 0.0) h_Bias->SetBinContent(i,0);
 
     double var = 0.0; 
-    for(int j=1;j<nbins+1;j++){
+    for(int j=1;j<nbins_y+1;j++){
       var += (h_Data->GetYaxis()->GetBinCenter(j) - mean)*(h_Data->GetYaxis()->GetBinCenter(j) - mean)*h_Data->GetBinContent(i,j);
     }
 
@@ -44,6 +45,63 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
     if(events == 0.0) h_Variance->SetBinContent(i,0);
 
   }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// 3D hist should have x and y axes as true and reconstructed energy
+// z axis is variable of interest
+void MakeBiasVarianceFrom3D(const TH3D* h, TH1D* h_bias,TH1D* h_variance){
+
+  // Calculate the mean estimated energy afo true neutrino energy and third variable
+  TH2D* h_energy = static_cast<TH2D*>(h->Project3D("zx"));  
+  h_energy->Reset(); 
+  for(int i=1;i<h->GetNbinsX()+1;i++){
+    for(int k=1;k<h->GetNbinsZ()+1;k++){
+     double mean = 0.0;
+     double events = 0.0; 
+
+     for(int j=1;j<h->GetNbinsY()+1;j++){
+       mean += h->GetYaxis()->GetBinCenter(j)*h->GetBinContent(i,j,k);
+       events += h->GetBinContent(i,j,k); 
+     }
+       
+     //std::cout << "z=" << h->GetZaxis()->GetBinCenter(k) <<" true_e=" << h->GetXaxis()->GetBinCenter(i) << " mean/events=" << mean/events << std::endl;       
+     h_energy->SetBinContent(i,k,mean/events);
+
+    }
+  } 
+
+  // Calculate the bias and variance as function of third variable 
+  double total_bias = 0.0;
+  double total_variance = 0.0;
+  double total_events = 0.0;
+  for(int k=1;k<h->GetNbinsZ()+1;k++){
+    double bias = 0.0;
+    double events = 0.0;
+    double variance = 0.0;
+    for(int i=1;i<h->GetNbinsX()+1;i++){
+      for(int j=1;j<h->GetNbinsY()+1;j++){
+        if(h->GetBinContent(i,j,k) > 0){
+          total_bias += (h->GetYaxis()->GetBinCenter(j) - h->GetXaxis()->GetBinCenter(i))*h->GetBinContent(i,j,k)/h->GetXaxis()->GetBinCenter(i);
+          total_variance += h->GetBinContent(i,j,k)*pow((h->GetYaxis()->GetBinCenter(j) - h_energy->GetBinContent(i,k))/h_energy->GetBinContent(i,k),2);
+          total_events += h->GetBinContent(i,j,k); 
+          bias += (h->GetYaxis()->GetBinCenter(j) - h->GetXaxis()->GetBinCenter(i))*h->GetBinContent(i,j,k)/h->GetXaxis()->GetBinCenter(i);
+          variance += h->GetBinContent(i,j,k)*pow((h->GetYaxis()->GetBinCenter(j) - h_energy->GetBinContent(i,k))/h_energy->GetBinContent(i,k),2);
+          events += h->GetBinContent(i,j,k); 
+        }
+      }
+    }
+    //std::cout << "k=" << k << " events=" << events << " bias/events=" << bias/events << " variance/events=" << variance/events << std::endl;
+    if(events > 0){
+      h_bias->SetBinContent(k,bias/events);  
+      h_variance->SetBinContent(k,variance/events);  
+    }
+  } 
+
+  //std::cout << "total_bias=" << total_bias/total_events << " total_variance=" <<  total_variance/total_events << " total_events=" << total_events << std::endl;
+  h_bias->SetBinContent(0,total_bias/total_events);
+  h_variance->SetBinContent(0,total_variance/total_events);
 
 }
 

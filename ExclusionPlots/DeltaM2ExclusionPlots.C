@@ -1,5 +1,6 @@
-#include "Funcs/Funcs.h"
-#include "Funcs/OscFitter.h"
+#include "../Funcs/Funcs.h"
+#include "../Funcs/EnergyEstimatorFuncs.h"
+#include "../Funcs/OscFitter.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -17,7 +18,7 @@ void DeltaM2ExclusionPlots(){
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaMSq_Minus(estimators_tmp.size());
 
   // Load the histograms with predictions
-  TFile* f_in = TFile::Open("rootfiles/NuMuRatesDeltaMSq.root");
+  TFile* f_in = TFile::Open("NuMuRatesDeltaMSq.root");
 
   // Reco energy plots scaled to 1 KT x 1e21 POT of exposure
   for(size_t i_e=0;i_e<estimators_tmp.size();i_e++){
@@ -100,9 +101,11 @@ void DeltaM2ExclusionPlots(){
       g_sqrtchi2_plus.push_back(new TGraph(exposure_v.size(),&(exposure_v[0]),&(sqrtchi2_plus_v[0])));
       g_sqrtchi2_minus.push_back(new TGraph(exposure_v.size(),&(exposure_v[0]),&(sqrtchi2_minus_v[0])));
 
-      g_sqrtchi2_plus.back()->SetLineColor(i_f+2);
+      g_sqrtchi2_plus.back()->SetLineStyle(i_f+1);
+      g_sqrtchi2_plus.back()->SetLineColor(colors.at(i_e));
       g_sqrtchi2_plus.back()->SetLineWidth(2);
-      g_sqrtchi2_minus.back()->SetLineColor(i_f+2);
+      g_sqrtchi2_minus.back()->SetLineColor(colors.at(i_e));
+      g_sqrtchi2_minus.back()->SetLineStyle(i_f+1);
       g_sqrtchi2_minus.back()->SetLineWidth(2);
       mg_plus->Add(g_sqrtchi2_plus.back());    
       mg_minus->Add(g_sqrtchi2_minus.back());    
@@ -114,13 +117,13 @@ void DeltaM2ExclusionPlots(){
     mg_plus->Draw("AL");
     mg_plus->SetTitle(";Exposure (KT x 10^{21} POT);sqrt(#chi^{2}/ndof)");
     l->Draw();
-    c->Print(("Plots/ExclusionPlots/DeltaMSqPlus_" + estimators_tmp.at(i_e) + ".png").c_str());
+    c->Print(("Plots/DeltaMSqPlus_" + estimators_tmp.at(i_e) + ".pdf").c_str());
     c->Clear();
 
     mg_minus->Draw("AL");
     mg_minus->SetTitle(";Exposure (KT x 10^{21} POT);sqrt(#chi^{2}/ndof)");
     l->Draw();
-    c->Print(("Plots/ExclusionPlots/DeltaMSqMinus_" + estimators_tmp.at(i_e) + ".png").c_str());
+    c->Print(("Plots/DeltaMSqMinus_" + estimators_tmp.at(i_e) + ".pdf").c_str());
     c->Clear();
 
     l->Clear();
@@ -146,7 +149,6 @@ void DeltaM2ExclusionPlots(){
       double center = (max + min)/2; 
       double width = (max - min)/2;
       h_bands_plus.back()->SetBinContent(i,center);
-      h_bands_plus.back()->SetBinError(i,width);
       h_lines_plus.back()->SetBinContent(i,center);
     }
 
@@ -160,7 +162,6 @@ void DeltaM2ExclusionPlots(){
       double center = (max + min)/2; 
       double width = (max - min)/2;
       h_bands_minus.back()->SetBinContent(i,center);
-      h_bands_minus.back()->SetBinError(i,width);
       h_lines_minus.back()->SetBinContent(i,center);
     }
 
@@ -172,12 +173,12 @@ void DeltaM2ExclusionPlots(){
   THStack* hs_lines_minus = new THStack("hs_lines_minus","#Delta m^{2}_{23}=CV Exclusion at #Delta m^{2}_{23}=CV-3#sigma;Exposure (KT x 10^{21} POT);sqrt(#chi^{2}/ndof)");
 
   for(size_t i_e=0;i_e<h_bands_plus.size();i_e++){
-    h_bands_plus.at(i_e)->SetFillColor(i_e+2);
-    h_bands_plus.at(i_e)->SetFillStyle(3344 + 110*i_e);
-    h_lines_plus.at(i_e)->SetLineColor(i_e+2);
+    //h_bands_plus.at(i_e)->SetFillColor(i_e+2);
+    //h_bands_plus.at(i_e)->SetFillStyle(3344 + 110*i_e);
+    h_lines_plus.at(i_e)->SetLineColor(colors.at(i_e));
     h_lines_plus.at(i_e)->SetLineWidth(3);
     hs_bands_plus->Add(h_bands_plus.at(i_e));
-    //hs_lines_plus->Add(h_lines_plus.at(i_e));
+    hs_lines_plus->Add(h_lines_plus.at(i_e));
     l->AddEntry(h_lines_plus.at(i_e),estimators_tmp.at(i_e).c_str(),"L");
   }
 
@@ -185,24 +186,22 @@ void DeltaM2ExclusionPlots(){
   //hs_lines_plus->Draw("nostack HIST same");
   for(size_t i_e=0;i_e<h_lines_plus.size();i_e++) h_lines_plus.at(i_e)->Draw("L same");
   l->Draw();
-  c->Print("Plots/ExclusionPlots/PlusDeltaMSqZero_Exclusion.png"); 
+  c->Print("Plots/PlusDeltaMSqZero_Exclusion.pdf"); 
   c->Clear();
   l->Clear();
 
   for(size_t i_e=0;i_e<h_bands_minus.size();i_e++){
-    h_bands_minus.at(i_e)->SetFillColor(i_e+2);
-    h_bands_minus.at(i_e)->SetFillStyle(3344 + 110*i_e);
-    h_lines_minus.at(i_e)->SetLineColor(i_e+2);
+    h_lines_minus.at(i_e)->SetLineColor(colors.at(i_e));
     h_lines_minus.at(i_e)->SetLineWidth(3);
     hs_bands_minus->Add(h_bands_minus.at(i_e));
-    //hs_lines_minus->Add(h_lines_minus.at(i_e));
+    hs_lines_minus->Add(h_lines_minus.at(i_e));
     l->AddEntry(h_lines_minus.at(i_e),estimators_tmp.at(i_e).c_str(),"L");
   }
 
   hs_bands_minus->Draw("nostack e4");
   for(size_t i_e=0;i_e<h_lines_minus.size();i_e++) h_lines_minus.at(i_e)->Draw("L same");
   l->Draw();
-  c->Print("Plots/ExclusionPlots/MinusDeltaMSqZero_Exclusion.png"); 
+  c->Print("Plots/MinusDeltaMSqZero_Exclusion.pdf"); 
   c->Clear();
   l->Clear();
  

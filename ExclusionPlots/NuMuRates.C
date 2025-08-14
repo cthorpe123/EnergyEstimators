@@ -1,5 +1,6 @@
-#include "Funcs/Funcs.h"
-#include "Funcs/OscFitter.h"
+#include "../Funcs/Funcs.h"
+#include "../Funcs/EnergyEstimatorFuncs.h"
+#include "../Funcs/OscFitter.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -12,7 +13,7 @@ double POT = 1; // POT in 10^21
 void NuMuRates(){
 
   // Load the numu flux histogram
-  TFile* f_flux = TFile::Open("Flux/DUNE_FD_Flux.root");
+  TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
   TH1D* h_flux = static_cast<TH1D*>(f_flux->Get("numu_flux"));
   TH1D* h_flux_osc = static_cast<TH1D*>(f_flux->Get("numu_fluxosc"));
   h_flux->SetDirectory(0);
@@ -23,7 +24,7 @@ void NuMuRates(){
   double total_flux = h_flux->Integral("width")*1e21/1e4; 
   std::cout << "Total Flux: " << total_flux << " nu/cm^2/10^21 POT" << std::endl; 
 
-  std::vector<std::string> InputFiles_v = {"GENIEEvents.root","NuWroEvents.root","NEUTEvents.root","GiBUUEvents.root"};
+  std::vector<std::string> InputFiles_v = {"GENIEEventsFiltered.root","NuWroEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaMSqCV;
@@ -57,6 +58,9 @@ void NuMuRates(){
     TLorentzVector* lepton_p4=0;
     std::vector<int>* pdg=0;
     std::vector<TLorentzVector>* p4=0;
+    int nprot;
+    double W;
+    std::vector<double>* est_nu_e=0;
 
     t->SetBranchAddress("scale",&scale);
     t->SetBranchAddress("weight",&weight);
@@ -67,6 +71,9 @@ void NuMuRates(){
     t->SetBranchAddress("lepton_p4",&lepton_p4);
     t->SetBranchAddress("pdg",&pdg);
     t->SetBranchAddress("p4",&p4);
+    t->SetBranchAddress("W",&W);
+    t->SetBranchAddress("nprot",&nprot);
+    t->SetBranchAddress("est_nu_e",&est_nu_e);
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
@@ -88,26 +95,18 @@ void NuMuRates(){
 
       if(nu_pdg != 14 || ccnc != 1) continue;
 
-      double W = CalcW(pdg,p4);
-      int nprot = GetNProt(pdg,p4);
-      std::vector<TVector3> proton_mom = GetParticleMom(pdg,p4,2212);
-      std::vector<TVector3> pion_mom = GetParticleMom(pdg,p4,211);
-      std::vector<TVector3> pizero_mom = GetParticleMom(pdg,p4,111);
-      std::vector<TVector3> neutron_mom = GetNeutronMom(pdg,p4);
-
       if(nprot < 1) continue;
 
       for(int i_e=0;i_e<kMAX;i_e++){
-        double nu_e_reco = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,neutron_mom,i_e);
-        h_RecoEnergy_DeltaMSqCV.back().at(i_e)->Fill(nu_e_reco,weight*osc_weight);
-        h_RecoEnergy_DeltaMSq_Plus.back().at(i_e)->Fill(nu_e_reco,weight*osc_weight_deltam2_plus);
-        h_RecoEnergy_DeltaMSq_Minus.back().at(i_e)->Fill(nu_e_reco,weight*osc_weight_deltam2_minus);
+        h_RecoEnergy_DeltaMSqCV.back().at(i_e)->Fill(est_nu_e->at(i_e),weight*osc_weight);
+        h_RecoEnergy_DeltaMSq_Plus.back().at(i_e)->Fill(est_nu_e->at(i_e),weight*osc_weight_deltam2_plus);
+        h_RecoEnergy_DeltaMSq_Minus.back().at(i_e)->Fill(est_nu_e->at(i_e),weight*osc_weight_deltam2_minus);
       }
     }
 
   }
 
-  TFile* f_out = new TFile("rootfiles/NuMuRatesDeltaMSq.root","RECREATE");
+  TFile* f_out = new TFile("NuMuRatesDeltaMSq.root","RECREATE");
 
   // Reco energy plots scaled to 1 KT x 1e21 POT of exposure
   for(size_t i_e=0;i_e<estimators_str.size();i_e++){

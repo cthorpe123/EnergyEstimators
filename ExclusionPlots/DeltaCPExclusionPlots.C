@@ -1,5 +1,6 @@
-#include "Funcs/Funcs.h"
-#include "Funcs/OscFitter.h"
+#include "../Funcs/Funcs.h"
+#include "../Funcs/EnergyEstimatorFuncs.h"
+#include "../Funcs/OscFitter.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -7,23 +8,23 @@
 //double fid_mass = 10; // active mass in KT
 //double POT = 1; // POT in 10^21
 
-void ExclusionPlots(){
+void DeltaCPExclusionPlots(){
 
   std::vector<std::string> estimators_tmp = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
-  std::vector<std::vector<TH1D*>> h_RecoEnergy_NoDeltaCP(estimators_tmp.size());
+  std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaCP_CV(estimators_tmp.size());
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaCP_Plus(estimators_tmp.size());
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaCP_Minus(estimators_tmp.size());
 
   // Load the histograms with predictions
-  TFile* f_in = TFile::Open("rootfiles/NueRatesCP.root");
+  TFile* f_in = TFile::Open("NueRatesDeltaCP.root");
 
   // Reco energy plots scaled to 1 KT x 1e21 POT of exposure
   for(size_t i_e=0;i_e<estimators_tmp.size();i_e++){
     std::string estimator = estimators_tmp.at(i_e);
     for(std::string generator : Generators_v){
-      h_RecoEnergy_NoDeltaCP.at(i_e).push_back(static_cast<TH1D*>(f_in->Get((generator+"_RecoEnergy_NoDeltaCP_"+estimator).c_str())));
+      h_RecoEnergy_DeltaCP_CV.at(i_e).push_back(static_cast<TH1D*>(f_in->Get((generator+"_RecoEnergy_DeltaCP_CV_"+estimator).c_str())));
       h_RecoEnergy_DeltaCP_Plus.at(i_e).push_back(static_cast<TH1D*>(f_in->Get((generator+"_RecoEnergy_DeltaCP_Plus_"+estimator).c_str())));
       h_RecoEnergy_DeltaCP_Minus.at(i_e).push_back(static_cast<TH1D*>(f_in->Get((generator+"_RecoEnergy_DeltaCP_Minus_"+estimator).c_str())));
     }
@@ -50,9 +51,9 @@ void ExclusionPlots(){
     for(size_t i_f=0;i_f<Generators_v.size();i_f++){
 
       // Get the histograms with exposure of 1 KT * 10^21 POT
-      const TH1D* h_unscaled_zerodeltacp = h_RecoEnergy_NoDeltaCP.at(i_e).at(i_f); 
-      const TH1D* h_unscaled_plusdeltacp = h_RecoEnergy_DeltaCP_Plus.at(i_e).at(i_f); 
-      const TH1D* h_unscaled_minusdeltacp = h_RecoEnergy_DeltaCP_Minus.at(i_e).at(i_f); 
+      const TH1D* h_unscaled_deltam2cv = h_RecoEnergy_DeltaCP_CV.at(i_e).at(i_f); 
+      const TH1D* h_unscaled_plusdeltam2 = h_RecoEnergy_DeltaCP_Plus.at(i_e).at(i_f); 
+      const TH1D* h_unscaled_minusdeltam2 = h_RecoEnergy_DeltaCP_Minus.at(i_e).at(i_f); 
 
       std::vector<double> exposure_v;
       std::vector<double> sqrtchi2_plus_v,sqrtchi2_minus_v; 
@@ -61,37 +62,37 @@ void ExclusionPlots(){
       double exposure = 1.0; 
       while(exposure < 500){
 
-        TH1D* h_scaled_zerodeltacp = static_cast<TH1D*>(h_unscaled_zerodeltacp->Clone("h_scaled_zerodeltacp"));
-        TH1D* h_scaled_plusdeltacp = static_cast<TH1D*>(h_unscaled_plusdeltacp->Clone("h_scaled_plusdeltacp"));
-        TH1D* h_scaled_minusdeltacp = static_cast<TH1D*>(h_unscaled_minusdeltacp->Clone("h_scaled_minusdeltacp"));
+        TH1D* h_scaled_deltam2cv = static_cast<TH1D*>(h_unscaled_deltam2cv->Clone("h_scaled_deltam2cv"));
+        TH1D* h_scaled_plusdeltam2 = static_cast<TH1D*>(h_unscaled_plusdeltam2->Clone("h_scaled_plusdeltam2"));
+        TH1D* h_scaled_minusdeltam2 = static_cast<TH1D*>(h_unscaled_minusdeltam2->Clone("h_scaled_minusdeltam2"));
 
         // Set bin content and error to the exposure
-        for(int i=1;i<h_scaled_zerodeltacp->GetNbinsX()+1;i++){
-          h_scaled_zerodeltacp->SetBinContent(i,h_scaled_zerodeltacp->GetBinContent(i)*exposure);
-          h_scaled_zerodeltacp->SetBinError(i,sqrt(h_scaled_zerodeltacp->GetBinContent(i)));
-          h_scaled_plusdeltacp->SetBinContent(i,h_scaled_plusdeltacp->GetBinContent(i)*exposure);
-          h_scaled_plusdeltacp->SetBinError(i,sqrt(h_scaled_plusdeltacp->GetBinContent(i)));
-          h_scaled_minusdeltacp->SetBinContent(i,h_scaled_minusdeltacp->GetBinContent(i)*exposure);
-          h_scaled_minusdeltacp->SetBinError(i,sqrt(h_scaled_minusdeltacp->GetBinContent(i)));
+        for(int i=1;i<h_scaled_deltam2cv->GetNbinsX()+1;i++){
+          h_scaled_deltam2cv->SetBinContent(i,h_scaled_deltam2cv->GetBinContent(i)*exposure);
+          h_scaled_deltam2cv->SetBinError(i,sqrt(h_scaled_deltam2cv->GetBinContent(i)));
+          h_scaled_plusdeltam2->SetBinContent(i,h_scaled_plusdeltam2->GetBinContent(i)*exposure);
+          h_scaled_plusdeltam2->SetBinError(i,sqrt(h_scaled_plusdeltam2->GetBinContent(i)));
+          h_scaled_minusdeltam2->SetBinContent(i,h_scaled_minusdeltam2->GetBinContent(i)*exposure);
+          h_scaled_minusdeltam2->SetBinError(i,sqrt(h_scaled_minusdeltam2->GetBinContent(i)));
         }
 
         // Calculate the chi2 between the zero deltaCP prediction and the two extreme deltaCP pred
         double chi2_plus=0.0,chi2_minus=0.0; 
-        for(int i=1;i<h_scaled_zerodeltacp->GetNbinsX()+1;i++){
-          chi2_plus += pow((h_scaled_plusdeltacp->GetBinContent(i) - h_scaled_zerodeltacp->GetBinContent(i))/h_scaled_plusdeltacp->GetBinError(i),2); 
-          chi2_minus += pow((h_scaled_minusdeltacp->GetBinContent(i) - h_scaled_zerodeltacp->GetBinContent(i))/h_scaled_minusdeltacp->GetBinError(i),2); 
+        for(int i=1;i<h_scaled_deltam2cv->GetNbinsX()+1;i++){
+          chi2_plus += pow((h_scaled_plusdeltam2->GetBinContent(i) - h_scaled_deltam2cv->GetBinContent(i))/h_scaled_plusdeltam2->GetBinError(i),2); 
+          chi2_minus += pow((h_scaled_minusdeltam2->GetBinContent(i) - h_scaled_deltam2cv->GetBinContent(i))/h_scaled_minusdeltam2->GetBinError(i),2); 
         }
 
-        chi2_plus /= h_scaled_zerodeltacp->GetNbinsX();
-        chi2_minus /= h_scaled_zerodeltacp->GetNbinsX();
+        chi2_plus /= h_scaled_deltam2cv->GetNbinsX();
+        chi2_minus /= h_scaled_deltam2cv->GetNbinsX();
 
         exposure_v.push_back(exposure);
         sqrtchi2_plus_v.push_back(sqrt(chi2_plus)); 
         sqrtchi2_minus_v.push_back(sqrt(chi2_minus)); 
 
-        delete h_scaled_zerodeltacp;
-        delete h_scaled_plusdeltacp;
-        delete h_scaled_minusdeltacp;
+        delete h_scaled_deltam2cv;
+        delete h_scaled_plusdeltam2;
+        delete h_scaled_minusdeltam2;
         exposure += 1;
         
       }
@@ -100,9 +101,11 @@ void ExclusionPlots(){
       g_sqrtchi2_plus.push_back(new TGraph(exposure_v.size(),&(exposure_v[0]),&(sqrtchi2_plus_v[0])));
       g_sqrtchi2_minus.push_back(new TGraph(exposure_v.size(),&(exposure_v[0]),&(sqrtchi2_minus_v[0])));
 
-      g_sqrtchi2_plus.back()->SetLineColor(i_f+2);
+      g_sqrtchi2_plus.back()->SetLineStyle(i_f+1);
+      g_sqrtchi2_plus.back()->SetLineColor(colors.at(i_e));
       g_sqrtchi2_plus.back()->SetLineWidth(2);
-      g_sqrtchi2_minus.back()->SetLineColor(i_f+2);
+      g_sqrtchi2_minus.back()->SetLineColor(colors.at(i_e));
+      g_sqrtchi2_minus.back()->SetLineStyle(i_f+1);
       g_sqrtchi2_minus.back()->SetLineWidth(2);
       mg_plus->Add(g_sqrtchi2_plus.back());    
       mg_minus->Add(g_sqrtchi2_minus.back());    
@@ -114,13 +117,13 @@ void ExclusionPlots(){
     mg_plus->Draw("AL");
     mg_plus->SetTitle(";Exposure (KT x 10^{21} POT);sqrt(#chi^{2}/ndof)");
     l->Draw();
-    c->Print(("Plots/ExclusionPlots/DeltaCPPlus_" + estimators_tmp.at(i_e) + ".png").c_str());
+    c->Print(("Plots/DeltaCPPlus_" + estimators_tmp.at(i_e) + ".pdf").c_str());
     c->Clear();
 
     mg_minus->Draw("AL");
     mg_minus->SetTitle(";Exposure (KT x 10^{21} POT);sqrt(#chi^{2}/ndof)");
     l->Draw();
-    c->Print(("Plots/ExclusionPlots/DeltaCPMinus_" + estimators_tmp.at(i_e) + ".png").c_str());
+    c->Print(("Plots/DeltaCPMinus_" + estimators_tmp.at(i_e) + ".pdf").c_str());
     c->Clear();
 
     l->Clear();
@@ -146,7 +149,6 @@ void ExclusionPlots(){
       double center = (max + min)/2; 
       double width = (max - min)/2;
       h_bands_plus.back()->SetBinContent(i,center);
-      h_bands_plus.back()->SetBinError(i,width);
       h_lines_plus.back()->SetBinContent(i,center);
     }
 
@@ -160,7 +162,6 @@ void ExclusionPlots(){
       double center = (max + min)/2; 
       double width = (max - min)/2;
       h_bands_minus.back()->SetBinContent(i,center);
-      h_bands_minus.back()->SetBinError(i,width);
       h_lines_minus.back()->SetBinContent(i,center);
     }
 
@@ -172,12 +173,12 @@ void ExclusionPlots(){
   THStack* hs_lines_minus = new THStack("hs_lines_minus","#delta_{CP}=0 Exclusion at #delta_{CP}=-#pi/2;Exposure (KT x 10^{21} POT);sqrt(#chi^{2}/ndof)");
 
   for(size_t i_e=0;i_e<h_bands_plus.size();i_e++){
-    h_bands_plus.at(i_e)->SetFillColor(i_e+2);
-    h_bands_plus.at(i_e)->SetFillStyle(3344 + 110*i_e);
-    h_lines_plus.at(i_e)->SetLineColor(i_e+2);
+    //h_bands_plus.at(i_e)->SetFillColor(i_e+2);
+    //h_bands_plus.at(i_e)->SetFillStyle(3344 + 110*i_e);
+    h_lines_plus.at(i_e)->SetLineColor(colors.at(i_e));
     h_lines_plus.at(i_e)->SetLineWidth(3);
     hs_bands_plus->Add(h_bands_plus.at(i_e));
-    //hs_lines_plus->Add(h_lines_plus.at(i_e));
+    hs_lines_plus->Add(h_lines_plus.at(i_e));
     l->AddEntry(h_lines_plus.at(i_e),estimators_tmp.at(i_e).c_str(),"L");
   }
 
@@ -185,24 +186,22 @@ void ExclusionPlots(){
   //hs_lines_plus->Draw("nostack HIST same");
   for(size_t i_e=0;i_e<h_lines_plus.size();i_e++) h_lines_plus.at(i_e)->Draw("L same");
   l->Draw();
-  c->Print("Plots/ExclusionPlots/PlusDeltaCPZero_Exclusion.png"); 
+  c->Print("Plots/PlusDeltaCPZero_Exclusion.pdf"); 
   c->Clear();
   l->Clear();
 
   for(size_t i_e=0;i_e<h_bands_minus.size();i_e++){
-    h_bands_minus.at(i_e)->SetFillColor(i_e+2);
-    h_bands_minus.at(i_e)->SetFillStyle(3344 + 110*i_e);
-    h_lines_minus.at(i_e)->SetLineColor(i_e+2);
+    h_lines_minus.at(i_e)->SetLineColor(colors.at(i_e));
     h_lines_minus.at(i_e)->SetLineWidth(3);
     hs_bands_minus->Add(h_bands_minus.at(i_e));
-    //hs_lines_minus->Add(h_lines_minus.at(i_e));
+    hs_lines_minus->Add(h_lines_minus.at(i_e));
     l->AddEntry(h_lines_minus.at(i_e),estimators_tmp.at(i_e).c_str(),"L");
   }
 
   hs_bands_minus->Draw("nostack e4");
   for(size_t i_e=0;i_e<h_lines_minus.size();i_e++) h_lines_minus.at(i_e)->Draw("L same");
   l->Draw();
-  c->Print("Plots/ExclusionPlots/MinusDeltaCPZero_Exclusion.png"); 
+  c->Print("Plots/MinusDeltaCPZero_Exclusion.pdf"); 
   c->Clear();
   l->Clear();
  

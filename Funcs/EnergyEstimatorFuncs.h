@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Assumed detection thresholds
 
-const std::map<int,std::pair<double,double>> thresholds = {
+std::map<int,std::pair<double,double>> thresholds = {
   {13,{0.1,5.0}},
   {2212,{0.3,2.0}},
   {211,{0.1,5.0}},
@@ -108,6 +108,7 @@ std::vector<TVector3> GetNeutronMom(const std::vector<int>* pdg_v,const std::vec
 
 enum estimators { kMuonKin , kMuonKinWNP , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMAX };
 const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
+const std::vector<int> colors = {kCyan+2,kBlue,kRed,kMagenta,kGreen+1};
 
 double T2KEnergy(const TLorentzVector* plepton){
   return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
@@ -169,13 +170,12 @@ double totaledepNeutronEnergy(const TLorentzVector* plepton,const std::vector<TV
   return e;
 }
 
-
 double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot,const std::vector<TVector3>& pprotons,const std::vector<TVector3>& ppions,const std::vector<TVector3>& ppizeros,const std::vector<TVector3>& pneutrons,int est){
   if(est < 0 || est >= kMAX) throw std::invalid_argument("GetEnergy: invalid estimator");
 
   switch(est){
     case kMuonKin: return T2KEnergy(plepton);
-    case kMuonKinWNP: return ubooneEnergy(plepton,W,nprot);
+    case kMuonKinWNP: if(nprot > 0) return ubooneEnergy(plepton,W,nprot); else return -1;
     case kPeLEELike0Pi: if(!ppions.size() && !ppizeros.size()) return peleeEnergy(plepton,pprotons); else return -1;
     case kTotalEDep: return totaledepEnergy(plepton,pprotons,ppions,ppizeros);
     case kSFMethod: if(pprotons.size() == 1 && !ppions.size() && !ppizeros.size()) return sfmethodEnergy(plepton,pprotons); else return -1;
@@ -183,6 +183,41 @@ double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot
   }
 
   return -1;
+
+}
+
+std::vector<double> GetEnergyEst(const TLorentzVector* plepton,const std::vector<int>* pdg,const std::vector<TLorentzVector>* p4){
+
+  std::vector<double> e;
+
+  double W = CalcW(pdg,p4);
+  int nprot = GetNProt(pdg,p4);
+  std::vector<TVector3> proton_mom = GetParticleMom(pdg,p4,2212);
+  std::vector<TVector3> pion_mom = GetParticleMom(pdg,p4,211);
+  std::vector<TVector3> pizero_mom = GetParticleMom(pdg,p4,111);
+  std::vector<TVector3> neutron_mom = GetNeutronMom(pdg,p4);
+
+  for(int i_e=0;i_e<kMAX;i_e++)
+    e.push_back(GetEnergy(plepton,W,nprot,proton_mom,pion_mom,pizero_mom,neutron_mom,i_e));
+
+  return e;
+
+}
+
+double GetMissingEnergy(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4_v){
+
+  double e = 0;
+  for(int i_p=0;i_p<pdg_v->size();i_p++){
+    const int& pdg = pdg_v->at(i_p);
+    double p = p4_v->at(i_p).Vect().Mag();
+    if(thresholds.find(abs(pdg)) != thresholds.end() && p < thresholds.at(abs(pdg)).first){
+      if(abs(pdg) == 211 || pdg == 111) e += p4_v->at(i_p).E(); 
+      if(pdg == 2212) e += p4_v->at(i_p).E() - Mp;
+    }
+    if(pdg == 2112) e += p4_v->at(i_p).E() - Mn;          
+  }
+
+  return e;
 
 }
 

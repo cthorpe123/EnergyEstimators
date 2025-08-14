@@ -12,7 +12,7 @@ void DeltaM2Plot(){
   // Load the histograms
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 
-  std::vector<std::string> Generators_v = {"GiBUU","NEUT","GENIE","NuWro"};
+  std::vector<std::string> Generators_v = {"GENIE","NuWro"};
 
   gSystem->Exec("mkdir -p Plots/");
   gSystem->Exec("mkdir -p Plots/FitPlots/");
@@ -31,7 +31,7 @@ void DeltaM2Plot(){
 
     std::vector<TH1D*> h_fit_results(estimators_str.size());
     for(size_t i_e=0;i_e<estimators_str.size();i_e++)
-      h_fit_results.at(i_e) = new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+gen).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",100,0.8*c_osc::deltamsq23,1.2*c_osc::deltamsq23);
+      h_fit_results.at(i_e) = new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+gen).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",100,0.9*c_osc::deltamsq23,1.1*c_osc::deltamsq23);
 
     double true_theta13 = c_osc::theta13;
     double true_theta23 = c_osc::theta23;
@@ -46,15 +46,15 @@ void DeltaM2Plot(){
 
       for(size_t i_e=0;i_e<estimators_str.size();i_e++){
 
-        TH2D* h = static_cast<TH2D*>(f->Get((Generators_v.at(0)+"_TrueEnergy_RecoEnergy_"+estimators_str.at(i_e)).c_str())); 
-        TH2D* h_nofsi = static_cast<TH2D*>(f->Get((gen+"_TrueEnergy_RecoEnergy_"+estimators_str.at(i_e)).c_str())); 
+        TH2D* h = static_cast<TH2D*>(f->Get((gen+"_TrueEnergy_RecoEnergy_"+estimators_str.at(i_e)).c_str())); 
+        TH2D* h_nofsi = static_cast<TH2D*>(f->Get((gen+"_TrueEnergy_RecoEnergy_NoFSI_"+estimators_str.at(i_e)).c_str())); 
 
         if(i_dm == 1){
           Normalise(h);
           Normalise(h_nofsi);
         }
 
-        //if(i_e == kMuonKin) continue;
+        if(i_e == kMuonKin) continue;
 
         const TH2D* h_data_true_reco = h;
         int nbins = h_data_true_reco->GetNbinsY();
@@ -68,7 +68,6 @@ void DeltaM2Plot(){
           for(int i=1;i<h_data_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_data_true_reco->GetXaxis()->GetBinCenter(i);
-            if(E < 0.8 || E > 5.0) continue;
             events += data_osc_model.NuMuSurvProb(E)*h_data_true_reco->GetBinContent(i,j)*flux;
           }
           h_data_reco->SetBinContent(j,events);
@@ -88,7 +87,6 @@ void DeltaM2Plot(){
           for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
-            if(E < 0.8 || E > 5.0) continue;
             events += data_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
           }
           h_model_reco_prefit->SetBinContent(j,events);
@@ -106,7 +104,6 @@ void DeltaM2Plot(){
             for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
-            if(E < 0.8 || E > 5.0) continue;
             events += fit_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
             }
             h_model_reco->SetBinContent(j,events);
@@ -171,7 +168,7 @@ void DeltaM2Plot(){
     THStack* hs = new THStack("hs",";Input #Delta m^{2}_{23} (eV^{2});Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}");     
 
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){
-      //if(i_e == kMuonKin) continue;
+      if(i_e == kMuonKin) continue;
       h_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
       h_fit_results.at(i_e)->SetLineWidth(2); 
       hs->Add(h_fit_results.at(i_e));
