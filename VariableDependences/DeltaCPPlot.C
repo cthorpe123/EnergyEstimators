@@ -104,10 +104,25 @@ bool DoFit(TH1D* h_flux,TH2D* h_data_true_reco,TH2D* h_model_true_reco,TH1D* h_d
 
 void DeltaCPPlot(){
 
-  std::vector<std::string> Generators_v = {"GENIE"/*,"NuWro","NEUT","GiBUU"*/};
+  std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
-  TCanvas* c = new TCanvas("c","c");
-  TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
+  TCanvas* c = new TCanvas("c","c",800,600);
+  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
+  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
+  p_legend->SetBottomMargin(0);
+  p_legend->SetTopMargin(0.1);
+  p_plot->SetTopMargin(0.01);
+
+  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
+  l->SetBorderSize(0);
+  l->SetNColumns(5);
+  
+  p_legend->Draw();
+  p_legend->cd();
+  l->Draw();
+  c->cd();
+  p_plot->Draw();
+  p_plot->cd();
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
@@ -116,11 +131,11 @@ void DeltaCPPlot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  std::string var = "Angle";
+  std::string var = "MissingE";
 
   TFile* f = TFile::Open("ResponseMatricesNue.root");
 
-  std::vector<double> true_deltaCP_v = {0/*,3.14/2,-3.14/2*/};
+  std::vector<double> true_deltaCP_v = {0,3.14/2,-3.14/2};
   std::vector<std::string> labels = {"Zero","Plus","Minus"};
 
   gSystem->Exec(("mkdir -p Plots/" + var).c_str());
@@ -197,19 +212,14 @@ void DeltaCPPlot(){
             h_model_reco_prefit->Draw("HIST same");
             h_model_reco_prefit->SetLineColor(3);
             h_model_reco_prefit->SetLineWidth(2);
-            h_data_reco->SetTitle(("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str());
+            //h_data_reco->SetTitle(("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str());
             l->AddEntry(h_data_reco,(gen+" FD").c_str(),"L");
             l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
             l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
-            l->Draw();
-            c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + std::to_string(i_dm) + "_" + gen + "_" + est +".png").c_str());
-            c->Clear();
+            l->AddEntry((TObject*)0,("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str(),"");
+            c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + std::to_string(i_dm) + "_" + gen + "_" + est +".pdf").c_str());
+            p_plot->Clear();
             l->Clear();
-
-            Normalise(h_model_true_reco);
-            h_model_true_reco->Draw("colz");
-            c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + std::to_string(i_dm) + "_" + gen + "_" + est +"_Response.png").c_str());
-            c->Clear(); 
           } 
 
           delete h_data_reco;
@@ -238,6 +248,11 @@ void DeltaCPPlot(){
       //THStack* hs = new THStack("hs",title.c_str());     
       TMultiGraph* mg = new TMultiGraph("mg",title.c_str());
 
+      TF1* f_line = new TF1("f_line","0",-1000,1000);
+      f_line->SetLineColor(1);  
+      f_line->SetLineWidth(2);
+      f_line->SetLineStyle(9);
+
       for(size_t i_e=0;i_e<estimators_str.size();i_e++){
         if(var == "W" && i_e == kSFMethod) continue;
         g_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
@@ -247,15 +262,15 @@ void DeltaCPPlot(){
       }
 
       mg->Draw("AL"); 
-      //hs->SetMinimum(min_fit_ratio-0.1*(max_fit_ratio-min_fit_ratio));
-      //hs->SetMaximum(max_fit_ratio+0.1*(max_fit_ratio-min_fit_ratio));
-      //gPad->Update();
-      l->Draw();
-      c->Print(("Plots/"+var+"/"+"DeltaCPFitResults_"+labels.at(i_dcp)+"_"+gen+".png").c_str());
-      c->Clear();
+      mg->GetYaxis()->SetRangeUser(std::min(-0.05,min_fit_ratio),std::max(0.05,max_fit_ratio));
+      f_line->Draw("L same");
+      
+      c->Print(("Plots/"+var+"/"+"DeltaCPFitResults_"+labels.at(i_dcp)+"_"+gen+".pdf").c_str());
+      p_plot->Clear();
       l->Clear();
 
       delete mg;
+      delete f_line;
 
     }
 

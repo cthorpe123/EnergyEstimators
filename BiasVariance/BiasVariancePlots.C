@@ -6,28 +6,25 @@
 void BiasVariancePlots(){
 
   bool draw_smeared = true;
+  bool rebin = false;
 
   std::vector<std::string> InputFiles_v = {"GENIEEvents.root","NEUTEvents.root","GiBUUEvents.root","NuWroEvents.root"};
   std::vector<std::string> Generators_v = {"GENIE","NEUT","GiBUU","NuWro"};
 
   std::vector<double> true_binning_v;
-  true_binning_v.push_back(0.35);
-  for(int i=0;i<31;i++) true_binning_v.push_back(true_binning_v.back()+0.15);
-  for(int i=0;i<10;i++) true_binning_v.push_back(true_binning_v.back()+0.3);
+  true_binning_v.push_back(0.5);
+  for(int i=0;i<10;i++) true_binning_v.push_back(true_binning_v.back()+0.25);
+  for(int i=0;i<4;i++) true_binning_v.push_back(true_binning_v.back()+0.5);
+  true_binning_v.push_back(true_binning_v.back()+1.0);
   int true_nbins = true_binning_v.size()-1;
   double* true_binning_a = &true_binning_v[0];
 
   std::vector<double> reco_binning_v;
+  reco_binning_v.push_back(0.0);
   reco_binning_v.push_back(0.1);
   for(int i=0;i<249;i++) reco_binning_v.push_back(reco_binning_v.back()+0.05);
   int reco_nbins = reco_binning_v.size()-1;
   double* reco_binning_a = &reco_binning_v[0];
-
-  std::vector<double> w_binning_v;
-  w_binning_v.push_back(0.8);
-  for(int i=0;i<21;i++) w_binning_v.push_back(w_binning_v.back()+0.2); 
-  int w_nbins = w_binning_v.size()-1;
-  double* w_binning_a = &w_binning_v[0];
 
   std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy(kMAX,std::vector<TH2D*>());
   std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_Smeared(kMAX,std::vector<TH2D*>());
@@ -103,8 +100,24 @@ void BiasVariancePlots(){
 
 
   gSystem->Exec("mkdir -p Plots/BiasVariancePlots/");
-  TCanvas* c = new TCanvas("c","c");
-  TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
+
+  TCanvas* c = new TCanvas("c","c",800,600);
+  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
+  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
+  p_legend->SetBottomMargin(0);
+  p_legend->SetTopMargin(0.1);
+  p_plot->SetTopMargin(0.01);
+
+  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
+  l->SetBorderSize(0);
+  l->SetNColumns(5);
+  
+  p_legend->Draw();
+  p_legend->cd();
+  l->Draw();
+  c->cd();
+  p_plot->Draw();
+  p_plot->cd();
 
   // First calculate the 1D bias/variance plots
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
@@ -153,31 +166,39 @@ void BiasVariancePlots(){
         hs_Variance->Add(h_Variance_Smeared.back());
       }
 
-      l->AddEntry(h_Bias.back(),est.c_str(),"L");
+      l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L");
 
       //delete h;
       delete h_smeared;
 
     } 
 
+    p_plot->cd();
     hs_Bias->Draw("nostack HIST");
+    p_legend->cd();
     l->Draw();
     c->Print(("Plots/Bias_Energy_"+gen+".pdf").c_str());  
-    c->Clear();
+    p_plot->Clear();
 
+    p_plot->cd();
     hs_Variance->Draw("nostack HIST");
+    p_legend->cd();
     l->Draw();
     c->Print(("Plots/Variance_Energy_"+gen+".pdf").c_str());  
-    c->Clear();
+    p_plot->Clear();
 
     l->Clear();
 
   }
 
+
   // Calculate the difference in bias between the difference generators - calculate spread  
   std::vector<TH1D*> h_band_low(kMAX);
   std::vector<TH1D*> h_band_high(kMAX);
   std::vector<TH1D*> h_band_width(kMAX);
+
+  double low = -0.45;
+  double high = 0.05;
 
   for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -186,6 +207,11 @@ void BiasVariancePlots(){
     h_band_low.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0)->ProjectionX(("band_low_"+est).c_str()); 
     h_band_high.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0)->ProjectionX(("band_high_"+est).c_str()); 
     h_band_width.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0)->ProjectionX(("band_width_"+est).c_str()); 
+    if(rebin){
+      h_band_low.at(i_e)->Rebin();
+      h_band_high.at(i_e)->Rebin();
+      h_band_width.at(i_e)->Rebin();
+    }
 
     for(int i=1;i<h_band_low.at(i_e)->GetNbinsX()+1;i++){
       h_band_low.at(i_e)->SetBinContent(i,10);
@@ -203,6 +229,14 @@ void BiasVariancePlots(){
       h_bias.at(i_f) = new TH1D(("h_Bias2_"+gen+"_"+est).c_str(),"",true_nbins,true_binning_a);
       TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",true_nbins,true_binning_a);
       GetBiasVariance(h,h_bias.at(i_f),h_variance); 
+
+      if(rebin){
+        h_bias.at(i_f)->Rebin();
+        h_variance->Rebin();
+        h_bias.at(i_f)->Scale(0.5); //rebinning will multiply contents of bins by 2
+        h_variance->Scale(0.5);
+      }
+
       for(int i=1;i<h_bias.at(i_f)->GetNbinsX()+1;i++){
         h_band_low.at(i_e)->SetBinContent(i,std::min(h_band_low.at(i_e)->GetBinContent(i),h_bias.at(i_f)->GetBinContent(i)));
         h_band_high.at(i_e)->SetBinContent(i,std::max(h_band_high.at(i_e)->GetBinContent(i),h_bias.at(i_f)->GetBinContent(i)));
@@ -220,10 +254,14 @@ void BiasVariancePlots(){
 
     } 
 
+    p_plot->cd();
     hs_Bias->Draw("nostack HIST");
-    l->Draw();
+    hs_Bias->SetMaximum(high);
+    hs_Bias->SetMinimum(low);
+    p_legend->cd();
+    //l->Draw();
     c->Print(("Plots/Bias_Bands_"+est+".pdf").c_str()); 
-    c->Clear();
+    p_plot->Clear();
     l->Clear();
 
   }
@@ -236,15 +274,15 @@ void BiasVariancePlots(){
     std::string est = estimators_str.at(i_e);
     h_band_width.at(i_e)->SetLineColor(colors.at(i_e));
     h_band_width.at(i_e)->SetLineWidth(2);
-    l->AddEntry(h_band_width.at(i_e),est.c_str(),"L");
-    //h_band.at(i_e)->Rebin();
+    l->AddEntry(h_band_width.at(i_e),estimators_leg.at(i_e).c_str(),"L");
     hs_Width->Add(h_band_width.at(i_e));
   } 
 
+  p_plot->cd();
   hs_Width->Draw("nostack HIST");
-  l->Draw();
+  //l->Draw();
   c->Print("Plots/Bias_Bands_Widths.pdf"); 
-  c->Clear();
+  p_plot->Clear();
   l->Clear(); 
 
 

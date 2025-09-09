@@ -16,8 +16,24 @@ void DeltaM2Plot(){
 
   gSystem->Exec("mkdir -p Plots/");
   gSystem->Exec("mkdir -p Plots/FitPlots/");
-  TCanvas* c = new TCanvas("c","c");
-  TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
+
+  TCanvas* c = new TCanvas("c","c",800,600);
+  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
+  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
+  p_legend->SetBottomMargin(0);
+  p_legend->SetTopMargin(0.1);
+  p_plot->SetTopMargin(0.01);
+
+  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
+  l->SetBorderSize(0);
+  l->SetNColumns(5);
+  
+  p_legend->Draw();
+  p_legend->cd();
+  l->Draw();
+  c->cd();
+  p_plot->Draw();
+  p_plot->cd();
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
@@ -68,6 +84,7 @@ void DeltaM2Plot(){
           for(int i=1;i<h_data_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_data_true_reco->GetXaxis()->GetBinCenter(i);
+            if(E > 5.0 || E < 0.8) continue;
             events += data_osc_model.NuMuSurvProb(E)*h_data_true_reco->GetBinContent(i,j)*flux;
           }
           h_data_reco->SetBinContent(j,events);
@@ -87,6 +104,7 @@ void DeltaM2Plot(){
           for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
+            if(E > 5.0 || E < 0.8) continue;
             events += data_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
           }
           h_model_reco_prefit->SetBinContent(j,events);
@@ -104,6 +122,7 @@ void DeltaM2Plot(){
             for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
+            if(E > 5.0 || E < 0.8) continue;
             events += fit_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
             }
             h_model_reco->SetBinContent(j,events);
@@ -143,14 +162,12 @@ void DeltaM2Plot(){
           h_model_reco_prefit->SetLineColor(2);
           h_model_reco_prefit->SetLineStyle(2);
           h_model_reco_prefit->SetLineWidth(2);
-          h_data_reco->SetTitle(("Input #Delta m^{2}="+std::to_string(true_deltamsq23)+" Measured #Delta m^{2}="+std::to_string(meas_deltamsq23)).c_str());
           l->AddEntry(h_data_reco,(gen+" FD").c_str(),"L");
           l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
           l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
-          l->Draw();
-          //c->Print(("Plots/DeltaM2Plots/" + gen + "_" + estimators_str.at(i_e) +".png").c_str());
-          c->Print(("Plots/FitPlots/"+gen+"/"+estimators_str.at(i_e)+"/Point_" + std::to_string(i_dm) + "_" + gen + "_" + estimators_str.at(i_e) +".png").c_str());
-          c->Clear();
+          l->AddEntry((TObject*)0,("Input #Delta m^{2}="+std::to_string(true_deltamsq23)+" Measured #Delta m^{2}="+std::to_string(meas_deltamsq23)).c_str(),"");
+          c->Print(("Plots/FitPlots/"+gen+"/"+estimators_str.at(i_e)+"/Point_" + std::to_string(i_dm) + "_" + gen + "_" + estimators_str.at(i_e) +".pdf").c_str());
+          p_plot->Clear();
           l->Clear();
         } 
 
@@ -165,6 +182,11 @@ void DeltaM2Plot(){
       }
     }
 
+    TF1* f_line = new TF1("f_line","1",-1000,1000);
+    f_line->SetLineColor(1);  
+    f_line->SetLineWidth(2);
+    f_line->SetLineStyle(9);
+
     THStack* hs = new THStack("hs",";Input #Delta m^{2}_{23} (eV^{2});Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}");     
 
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){
@@ -178,10 +200,13 @@ void DeltaM2Plot(){
     hs->Draw("HIST nostack"); 
     hs->SetMinimum(min_fit_ratio-0.1*(max_fit_ratio-min_fit_ratio));
     hs->SetMaximum(max_fit_ratio+0.1*(max_fit_ratio-min_fit_ratio));
-    l->Draw();
-    c->Print(("Plots/FitResults_"+gen+".png").c_str());
-    c->Clear();
+    f_line->Draw("L same");
+    c->Print(("Plots/FitResults_"+gen+".pdf").c_str());
+    p_plot->Clear();
     l->Clear();
+
+    delete hs;
+    delete f_line;
 
   }
 

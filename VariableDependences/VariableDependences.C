@@ -4,6 +4,8 @@
 
 void VariableDependences(){
 
+  bool rebin = false;
+
   std::vector<std::string> InputFiles_v = {"GENIEEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root","NuWroEventsFiltered.root"};
   std::vector<std::string> Generators_v = {"GENIE","NEUT","GiBUU","NuWro"};
   std::vector<std::string> vars = {"W","Energy","Angle","MissingE","Neutrons"};
@@ -16,6 +18,7 @@ void VariableDependences(){
   std::vector<int> points;
   std::vector<std::vector<double>> binning;
   std::vector<double*> binning_a;
+  std::vector<std::pair<double,double>> bias_ranges;
 
   std::vector<double> bins;
   for(int i=0;i<201;i++) bins.push_back(0.2+i*(8.0-0.2)/200);
@@ -23,12 +26,13 @@ void VariableDependences(){
   double* bins_a = &bins[0];
 
   // W histogram setup
-  std::vector<double> w_binning = {0.8,1.0,1.2,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.2,3.4,3.6,3.8,4.0,4.2,4.4,4.6,4.8,5.0}; 
+  std::vector<double> w_binning = {0.8,1.0,1.2,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.2,3.4,3.6,3.8,4.0,4.2,4.4,4.6,4.8,5.0}; 
   int w_points = w_binning.size()-1;
   double* w_binning_a = &w_binning[0]; 
   points.push_back(w_points);
   binning.push_back(w_binning);
   binning_a.push_back(w_binning_a);
+  bias_ranges.push_back(std::make_pair(-0.6,0.1));
 
   // Energy histogram setup
   std::vector<double> e_binning = {0.2,0.5,0.8,1.1,1.4,1.7,2.0,2.3,2.6,2.9,3.2,3.5,3.8,4.1,4.4,4.7,5.0,5.3,5.6,5.9,6.2,6.5,6.8,7.1,7.4,7.7,8.0}; 
@@ -37,6 +41,7 @@ void VariableDependences(){
   points.push_back(e_points);
   binning.push_back(e_binning);
   binning_a.push_back(e_binning_a);
+  bias_ranges.push_back(std::make_pair(-0.45,0.1));
 
   // Angle histogram setup
   std::vector<double> ang_binning = {0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.2,1.4,1.6,1.8,2.0,2.4,2.8,3.142}; 
@@ -45,6 +50,7 @@ void VariableDependences(){
   points.push_back(ang_points);
   binning.push_back(ang_binning);
   binning_a.push_back(ang_binning_a);
+  bias_ranges.push_back(std::make_pair(-0.65,0.1));
 
   // Missing energy histogram setup
   std::vector<double> miss_binning = {0.0,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,1.2}; 
@@ -53,6 +59,7 @@ void VariableDependences(){
   points.push_back(miss_points);
   binning.push_back(miss_binning);
   binning_a.push_back(miss_binning_a);
+  bias_ranges.push_back(std::make_pair(-0.6,0.0));
 
   // Neutrons histogram setup
   std::vector<double> n_binning = {-0.5,0.5,1.5,2.5,3.5,4.5,6.5}; 
@@ -61,6 +68,7 @@ void VariableDependences(){
   points.push_back(n_points);
   binning.push_back(n_binning);
   binning_a.push_back(n_binning_a);
+  bias_ranges.push_back(std::make_pair(-0.65,0.0));
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -112,7 +120,7 @@ void VariableDependences(){
       t->GetEntry(ievent);
 
       if(gen != "GiBUU") weight = 1.0;
-      //if(generator == "GiBUU" && weight > 1) continue;
+      //if(gen == "GiBUU" && weight > 1) continue;
 
       if(nu_pdg != 14 || ccnc != 1) continue;
       if(nprot < 1) continue;
@@ -145,9 +153,24 @@ void VariableDependences(){
   } // i_f
 
   gSystem->Exec("mkdir -p Plots/");
-  TCanvas* c = new TCanvas("c","c");
-  TLegend* l = new TLegend(0.75,0.75,0.98,0.98);
 
+  TCanvas* c = new TCanvas("c","c",800,600);
+  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
+  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
+  p_legend->SetBottomMargin(0);
+  p_legend->SetTopMargin(0.1);
+  p_plot->SetTopMargin(0.01);
+
+  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
+  l->SetBorderSize(0);
+  l->SetNColumns(5);
+  
+  p_legend->Draw();
+  p_legend->cd();
+  l->Draw();
+  c->cd();
+  p_plot->Draw();
+  p_plot->cd();
 
   // Bias AFO difference variables
   for(size_t i_v=0;i_v<vars.size();i_v++){
@@ -186,15 +209,14 @@ void VariableDependences(){
 
       }
 
+      p_plot->cd();
       hs_Bias->Draw("nostack HIST");
-      l->Draw();
       c->Print(("Plots/"+var+"/Bias_"+gen+".pdf").c_str());  
-      c->Clear();
+      p_plot->Clear();
 
       hs_Variance->Draw("nostack HIST");
-      l->Draw();
       c->Print(("Plots/"+var+"/Variance_"+gen+".pdf").c_str());  
-      c->Clear();
+      p_plot->Clear();
       l->Clear();
 
     }
@@ -223,10 +245,10 @@ void VariableDependences(){
 
     }
 
+    p_plot->cd();
     hs->Draw("HIST nostack");
-    l->Draw();
     c->Print(("Plots/"+var+"/Dist.pdf").c_str());
-    c->Clear();
+    p_plot->Clear();
 
     l->Clear();
 
@@ -243,6 +265,9 @@ void VariableDependences(){
     std::vector<TH1D*> h_band_low(kMAX);
     std::vector<TH1D*> h_band_high(kMAX);
     std::vector<TH1D*> h_band_width(kMAX);
+    std::vector<TH1D*> h_band_sigma(kMAX);
+    std::vector<TH1D*> h_band_center(kMAX);
+    std::vector<std::vector<TH1D*>> h_bias(kMAX,std::vector<TH1D*>(InputFiles_v.size()));
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -253,44 +278,65 @@ void VariableDependences(){
       h_band_low.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_low_"+est+"_"+var).c_str()); 
       h_band_high.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_high_"+est+"_"+var).c_str()); 
       h_band_width.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_width_"+est+"_"+var).c_str()); 
+      h_band_center.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_center_"+est+"_"+var).c_str()); 
+      h_band_sigma.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_sigma_"+est+"_"+var).c_str()); 
+      h_band_center.at(i_e)->Reset();
+      h_band_sigma.at(i_e)->Reset();
 
+      if(rebin && var == "W"){
+        h_band_low.at(i_e)->Rebin();
+        h_band_high.at(i_e)->Rebin();
+        h_band_width.at(i_e)->Rebin();
+        h_band_center.at(i_e)->Rebin();
+        h_band_sigma.at(i_e)->Rebin();
+      }
       for(int i=1;i<h_band_low.at(i_e)->GetNbinsX()+1;i++){
         h_band_low.at(i_e)->SetBinContent(i,10);
         h_band_high.at(i_e)->SetBinContent(i,-10);
       }
 
       THStack* hs_Bias = new THStack(("hs_Bias_"+var+"_"+est).c_str(),(";"+axis_title+";Frac. Bias").c_str());
-      std::vector<TH1D*> h_bias(InputFiles_v.size());
 
       for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
         std::string gen = Generators_v.at(i_f);
 
         TH3D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v);
-        h_bias.at(i_f) = new TH1D(("h_Bias2_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
+        h_bias.at(i_e).at(i_f) = new TH1D(("h_Bias2_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
         TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",points.at(i_v),binning_a.at(i_v));
-        MakeBiasVarianceFrom3D(h,h_bias.at(i_f),h_variance); 
-        for(int i=1;i<h_bias.at(i_f)->GetNbinsX()+1;i++){
-          h_band_low.at(i_e)->SetBinContent(i,std::min(h_band_low.at(i_e)->GetBinContent(i),h_bias.at(i_f)->GetBinContent(i)));
-          h_band_high.at(i_e)->SetBinContent(i,std::max(h_band_high.at(i_e)->GetBinContent(i),h_bias.at(i_f)->GetBinContent(i)));
+        MakeBiasVarianceFrom3D(h,h_bias.at(i_e).at(i_f),h_variance); 
+
+        if(rebin && var == "W"){
+          h_bias.at(i_e).at(i_f)->Rebin();
+          h_variance->Rebin();
+          h_bias.at(i_e).at(i_f)->Scale(0.5);
+          h_variance->Scale(0.5);
+        }
+
+        for(int i=1;i<h_bias.at(i_e).at(i_f)->GetNbinsX()+1;i++){
+          h_band_low.at(i_e)->SetBinContent(i,std::min(h_band_low.at(i_e)->GetBinContent(i),h_bias.at(i_e).at(i_f)->GetBinContent(i)));
+          h_band_high.at(i_e)->SetBinContent(i,std::max(h_band_high.at(i_e)->GetBinContent(i),h_bias.at(i_e).at(i_f)->GetBinContent(i)));
           h_band_width.at(i_e)->SetBinContent(i,h_band_high.at(i_e)->GetBinContent(i) - h_band_low.at(i_e)->GetBinContent(i));
+          h_band_center.at(i_e)->AddBinContent(i,h_bias.at(i_e).at(i_f)->GetBinContent(i)/InputFiles_v.size());
         }
 
         delete h;
         delete h_variance;
 
-        h_bias.at(i_f)->SetLineColor(colors.at(i_e));
-        h_bias.at(i_f)->SetLineStyle(i_f+1);
-        h_bias.at(i_f)->SetLineWidth(2);
-        hs_Bias->Add(h_bias.at(i_f));
-        l->AddEntry(h_bias.at(i_f),gen.c_str(),"L");
+        h_bias.at(i_e).at(i_f)->SetLineColor(colors.at(i_e));
+        h_bias.at(i_e).at(i_f)->SetLineStyle(i_f+1);
+        h_bias.at(i_e).at(i_f)->SetLineWidth(2);
+        hs_Bias->Add(h_bias.at(i_e).at(i_f));
+        l->AddEntry(h_bias.at(i_e).at(i_f),gen.c_str(),"L");
                
       } 
 
+      p_plot->cd();
       hs_Bias->Draw("nostack HIST");
-      l->Draw();
+      hs_Bias->SetMinimum(bias_ranges.at(i_v).first);
+      hs_Bias->SetMaximum(bias_ranges.at(i_v).second);
       c->Print(("Plots/"+var+"/Bias_Bands"+est+".pdf").c_str()); 
-      c->Clear();
+      p_plot->Clear();
       l->Clear();
 
     }
@@ -302,17 +348,30 @@ void VariableDependences(){
     for(size_t i_e=0;i_e<kMAX;i_e++){
       if(var == "W" && i_e == kSFMethod) continue;
       std::string est = estimators_str.at(i_e);
+
+      for(int i=1;i<h_band_center.at(i_e)->GetNbinsX()+1;i++){
+        for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+          h_band_sigma.at(i_e)->AddBinContent(i,pow(h_bias.at(i_e).at(i_f)->GetBinContent(i) - h_band_center.at(i_e)->GetBinContent(i),2)/InputFiles_v.size());
+        }
+        h_band_sigma.at(i_e)->SetBinContent(i,sqrt(h_band_sigma.at(i_e)->GetBinContent(i)));
+      }
+/*
       h_band_width.at(i_e)->SetLineColor(colors.at(i_e));
       h_band_width.at(i_e)->SetLineWidth(2);
       l->AddEntry(h_band_width.at(i_e),est.c_str(),"L");
-      //h_band.at(i_e)->Rebin();
       hs_Width->Add(h_band_width.at(i_e));
+*/
+      h_band_sigma.at(i_e)->SetLineColor(colors.at(i_e));
+      h_band_sigma.at(i_e)->SetLineWidth(2);
+      l->AddEntry(h_band_sigma.at(i_e),est.c_str(),"L");
+      hs_Width->Add(h_band_sigma.at(i_e));
+
     } 
 
+    p_plot->cd();
     hs_Width->Draw("nostack HIST");
-    l->Draw();
     c->Print(("Plots/"+var+"/Bias_Bands_Widths.pdf").c_str()); 
-    c->Clear();
+    p_plot->Clear();
     l->Clear(); 
 
   }

@@ -1,3 +1,4 @@
+#include "Funcs/EnergyEstimatorFuncs.h"
 #include "Funcs/Funcs.h"
 #include "TLorentzVector.h"
 
@@ -9,6 +10,14 @@ void Efficiencies(){
   std::vector<std::string> InputFiles_v = {"GENIEEvents.root","NuWroEvents.root","NEUTEvents.root","GiBUUEvents.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
+  std::vector<double> true_binning_v;
+  true_binning_v.push_back(0.5);
+  for(int i=0;i<10;i++) true_binning_v.push_back(true_binning_v.back()+0.25);
+  for(int i=0;i<4;i++) true_binning_v.push_back(true_binning_v.back()+0.5);
+  true_binning_v.push_back(true_binning_v.back()+1.0);
+  int true_nbins = true_binning_v.size()-1;
+  double* true_binning_a = &true_binning_v[0];
+
   std::vector<TH1D*> h_TrueEnergy;
   std::vector<TH1D*> h_TrueEnergy_Np;
   std::vector<TH1D*> h_TrueEnergy_Np0pi;
@@ -18,10 +27,10 @@ void Efficiencies(){
 
     std::string generator = Generators_v.at(i_f);    
 
-    h_TrueEnergy.push_back(new TH1D(("h_TrueEnergy_"+generator).c_str(),"",50,0.0,8.0));
-    h_TrueEnergy_Np.push_back(new TH1D(("h_TrueEnergy_Np"+generator).c_str(),"",50,0.0,8.0));
-    h_TrueEnergy_Np0pi.push_back(new TH1D(("h_TrueEnergy_Np0pi"+generator).c_str(),"",50,0.0,8.0));
-    h_TrueEnergy_1p0pi.push_back(new TH1D(("h_TrueEnergy_1P0pi"+generator).c_str(),"",50,0.0,8.0));
+    h_TrueEnergy.push_back(new TH1D(("h_TrueEnergy_"+generator).c_str(),"",true_nbins,true_binning_a));
+    h_TrueEnergy_Np.push_back(new TH1D(("h_TrueEnergy_Np"+generator).c_str(),"",true_nbins,true_binning_a));
+    h_TrueEnergy_Np0pi.push_back(new TH1D(("h_TrueEnergy_Np0pi"+generator).c_str(),"",true_nbins,true_binning_a));
+    h_TrueEnergy_1p0pi.push_back(new TH1D(("h_TrueEnergy_1P0pi"+generator).c_str(),"",true_nbins,true_binning_a));
 
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
@@ -77,11 +86,28 @@ void Efficiencies(){
       h_TrueEnergy_1p0pi.back()->Fill(nu_e,weight);
 
     }
+
   }
 
   gSystem->Exec("mkdir -p Plots/EfficiencyPlots/");
-  TCanvas* c = new TCanvas("c","c");
-  TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
+
+  TCanvas* c = new TCanvas("c","c",800,600);
+  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
+  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
+  p_legend->SetBottomMargin(0);
+  p_legend->SetTopMargin(0.1);
+  p_plot->SetTopMargin(0.01);
+
+  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
+  l->SetBorderSize(0);
+  l->SetNColumns(5);
+  
+  p_legend->Draw();
+  p_legend->cd();
+  l->Draw();
+  c->cd();
+  p_plot->Draw();
+  p_plot->cd();
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
     THStack* hs = new THStack("hs",";True Neutrino Energy (GeV);Fraction");
@@ -104,40 +130,49 @@ void Efficiencies(){
     hs->Add(h_TrueEnergy_1p0pi.at(i_f));
     l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0pi","L");
 
+    p_plot->cd();
     hs->Draw("HIST nostack");
+
+    p_legend->cd();
     l->Draw();
-    c->Print(("Plots/EfficiencyPlots/"+Generators_v.at(i_f)+".png").c_str());
+
+    c->Print(("Plots/EfficiencyPlots/"+Generators_v.at(i_f)+".pdf").c_str());
     l->Clear();
+    p_plot->Clear();
 
     delete hs;
   } 
 
+  l->SetNColumns(InputFiles_v.size());
 
-  TLegend* l2 = new TLegend(0.55,0.75,0.95,0.95);
-  l2->SetNColumns(3);
   THStack* hs_all = new THStack("hs_all",";True Neutrino Energy (GeV);Fraction");
+  
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
- 
     h_TrueEnergy_Np.at(i_f)->SetLineColor(i_f+1);
     h_TrueEnergy_Np0pi.at(i_f)->SetLineColor(i_f+1); 
     h_TrueEnergy_1p0pi.at(i_f)->SetLineColor(i_f+1); 
- 
+    l->AddEntry(h_TrueEnergy_Np.at(i_f),(Generators_v.at(i_f)+" Np").c_str(),"L"); 
+  }
+   
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
     h_TrueEnergy_Np.at(i_f)->SetLineStyle(1); 
     h_TrueEnergy_Np0pi.at(i_f)->SetLineStyle(2); 
     h_TrueEnergy_1p0pi.at(i_f)->SetLineStyle(3); 
+    l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0pi","L"); 
+  }
 
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
     hs_all->Add(h_TrueEnergy_Np.at(i_f));
     hs_all->Add(h_TrueEnergy_Np0pi.at(i_f));
     hs_all->Add(h_TrueEnergy_1p0pi.at(i_f));
-
-    l2->AddEntry(h_TrueEnergy_Np.at(i_f),(Generators_v.at(i_f)+" Np").c_str(),"L"); 
-    l2->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0pi","L"); 
-    l2->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0pi","L"); 
+    l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0pi","L"); 
   }
-  
+ 
+  p_plot->cd(); 
   hs_all->Draw("nostack HIST");
-  l2->Draw();
-  c->Print("Plots/EfficiencyPlots/Efficiencies.png");
+  p_legend->cd();
+  l->Draw();
+  c->Print("Plots/EfficiencyPlots/Efficiencies.pdf");
   c->Close();
 
 }

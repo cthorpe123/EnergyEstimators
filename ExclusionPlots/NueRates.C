@@ -1,6 +1,7 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
+#include "../Funcs/Smearing.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -10,7 +11,9 @@ OscModel osc_model;
 double fid_mass = 1; // active mass in KT
 double POT = 1; // POT in 10^21
 
-void NueRates(){
+void NueRates_tmp(){
+
+  bool make_smear_plots = true;
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
@@ -24,12 +27,16 @@ void NueRates(){
   double total_flux = h_flux->Integral("width")*1e21/1e4; 
   std::cout << "Total Flux: " << total_flux << " nu/cm^2/10^21 POT" << std::endl; 
 
-  std::vector<std::string> InputFiles_v = {"GENIE_NueEventsFiltered.root","NuWro_NueEventsFiltered.root","NEUT_NueEventsFiltered.root","GiBUU_NueEventsFiltered.root"};
+  std::vector<std::string> InputFiles_v = {"GENIE_NueEvents.root","NuWro_NueEvents.root","NEUT_NueEvents.root","GiBUU_NueEvents.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaCP_CV;
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaCP_Plus;
   std::vector<std::vector<TH1D*>> h_RecoEnergy_DeltaCP_Minus;
+
+  std::vector<std::vector<TH1D*>> h_RecoEnergy_Smeared_DeltaCP_CV;
+  std::vector<std::vector<TH1D*>> h_RecoEnergy_Smeared_DeltaCP_Plus;
+  std::vector<std::vector<TH1D*>> h_RecoEnergy_Smeared_DeltaCP_Minus;
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -39,11 +46,18 @@ void NueRates(){
     h_RecoEnergy_DeltaCP_Plus.push_back(std::vector<TH1D*>());
     h_RecoEnergy_DeltaCP_Minus.push_back(std::vector<TH1D*>());
 
+    h_RecoEnergy_Smeared_DeltaCP_CV.push_back(std::vector<TH1D*>());
+    h_RecoEnergy_Smeared_DeltaCP_Plus.push_back(std::vector<TH1D*>());
+    h_RecoEnergy_Smeared_DeltaCP_Minus.push_back(std::vector<TH1D*>());
+
     int nbins = 100;
     for(std::string estimator : estimators_str){
       h_RecoEnergy_DeltaCP_CV.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaCP_CV_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
       h_RecoEnergy_DeltaCP_Plus.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaCP_Plus_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
       h_RecoEnergy_DeltaCP_Minus.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaCP_Minus_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
+      h_RecoEnergy_Smeared_DeltaCP_CV.back().push_back(new TH1D((generator+"_RecoEnergy_Smeared_DeltaCP_CV_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
+      h_RecoEnergy_Smeared_DeltaCP_Plus.back().push_back(new TH1D((generator+"_RecoEnergy_Smeared_DeltaCP_Plus_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
+      h_RecoEnergy_Smeared_DeltaCP_Minus.back().push_back(new TH1D((generator+"_RecoEnergy_Smeared_DeltaCP_Minus_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
     }
 
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
@@ -58,9 +72,6 @@ void NueRates(){
     TLorentzVector* lepton_p4=0;
     std::vector<int>* pdg=0;
     std::vector<TLorentzVector>* p4=0;
-    int nprot;
-    double W;
-    std::vector<double>* est_nu_e=0;
 
     t->SetBranchAddress("scale",&scale);
     t->SetBranchAddress("weight",&weight);
@@ -71,9 +82,6 @@ void NueRates(){
     t->SetBranchAddress("lepton_p4",&lepton_p4);
     t->SetBranchAddress("pdg",&pdg);
     t->SetBranchAddress("p4",&p4);
-    t->SetBranchAddress("W",&W);
-    t->SetBranchAddress("nprot",&nprot);
-    t->SetBranchAddress("est_nu_e",&est_nu_e);
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
@@ -95,12 +103,32 @@ void NueRates(){
 
       if(nu_pdg != 12 || ccnc != 1) continue;
 
+      int nprot = GetNProt(pdg,p4);
+      double W = CalcW(pdg,p4);
       if(nprot < 1) continue;
 
+      std::vector<double> energies =  GetEnergyEst(lepton_p4,pdg,p4);
+
+      // Calculate predictions with kinematic smearing 
+      std::vector<double> energies_smeared;
+      if(make_smear_plots){
+        smearing::smear_mom(*lepton_p4,13);
+        for(int i=0;i<p4->size();i++) smearing::smear_mom(p4->at(i),pdg->at(i));
+        int nprot_smeared = GetNProt(pdg,p4);
+        double W_smeared = CalcW(pdg,p4);
+        energies_smeared = GetEnergyEst(lepton_p4,pdg,p4);
+        energies_smeared.at(kTotalEDep) = energies.at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0));
+      }
+
       for(int i_e=0;i_e<kMAX;i_e++){
-        h_RecoEnergy_DeltaCP_CV.back().at(i_e)->Fill(est_nu_e->at(i_e),weight*osc_weight);
-        h_RecoEnergy_DeltaCP_Plus.back().at(i_e)->Fill(est_nu_e->at(i_e),weight*osc_weight_deltam2_plus);
-        h_RecoEnergy_DeltaCP_Minus.back().at(i_e)->Fill(est_nu_e->at(i_e),weight*osc_weight_deltam2_minus);
+        h_RecoEnergy_DeltaCP_CV.back().at(i_e)->Fill(energies.at(i_e),weight*osc_weight);
+        h_RecoEnergy_DeltaCP_Plus.back().at(i_e)->Fill(energies.at(i_e),weight*osc_weight_deltam2_plus);
+        h_RecoEnergy_DeltaCP_Minus.back().at(i_e)->Fill(energies.at(i_e),weight*osc_weight_deltam2_minus);
+        if(make_smear_plots){
+          h_RecoEnergy_Smeared_DeltaCP_CV.back().at(i_e)->Fill(energies_smeared.at(i_e),weight*osc_weight);
+          h_RecoEnergy_Smeared_DeltaCP_Plus.back().at(i_e)->Fill(energies_smeared.at(i_e),weight*osc_weight_deltam2_plus);
+          h_RecoEnergy_Smeared_DeltaCP_Minus.back().at(i_e)->Fill(energies_smeared.at(i_e),weight*osc_weight_deltam2_minus);
+        }
       }
     }
 
@@ -121,6 +149,21 @@ void NueRates(){
       h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->Write();
     }
   }   
+
+  if(make_smear_plots){
+    for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+      for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+        for(int i=1;i<h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->GetNbinsX()+1;i++){
+          h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->GetBinContent(i)));
+          h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->GetBinContent(i)));
+          h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->GetBinContent(i)));
+        }
+        h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->Write();
+        h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->Write();
+        h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->Write();
+      }
+    }   
+  }
 
   f_out->Close();
 

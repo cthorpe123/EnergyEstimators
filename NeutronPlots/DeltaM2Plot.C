@@ -105,7 +105,7 @@ void DeltaM2Plot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  std::string var = "MissingE";
+  std::string var = "Neutrons";
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 

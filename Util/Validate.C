@@ -3,7 +3,7 @@
 
 void Validate(){
 
-  std::vector<std::string> InputFiles_v = {"../rootfiles/NuWroEvents.root","../rootfiles/NEUTEvents.root","../rootfiles/GENIEEvents.root","../rootfiles/GiBUUEvents.root"};
+  std::vector<std::string> InputFiles_v = {"NuWroEvents.root","NEUTEvents.root","GENIEEvents.root","GiBUUEvents.root"};
   std::vector<std::string> Generators_v = {"NuWro","NEUT","GENIE","GiBUU"};
 
   std::vector<TH1D*> h_NeutrinoEnergy;
@@ -13,7 +13,7 @@ void Validate(){
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
-    TFile* f = TFile::Open(InputFiles_v.at(i_f).c_str()) ;
+    TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
     std::string generator = Generators_v.at(i_f);    
 
@@ -60,7 +60,8 @@ void Validate(){
       } 
 
       if(generator != "GiBUU") weight = 1;
-
+      if(generator == "GiBUU" &&  weight > 1) continue;
+        
       weight *= scale*1e38*40;
 
       h_NeutrinoEnergy.back()->Fill(nu_e,weight);
@@ -110,12 +111,6 @@ void Validate(){
     h_LeptonAngle.at(i_f)->SetLineWidth(2);
     h_LeptonAngle.at(i_f)->SetLineColor(i_f+2);
     hs_LeptonAngle->Add(h_LeptonAngle.at(i_f));
-
-    std::cout << Generators_v.at(i_f) << std::endl;
-    std::cout << h_NeutrinoEnergy.at(i_f)->Integral("width") << std::endl;
-    std::cout << h_W.at(i_f)->Integral("width") << std::endl;
-    std::cout << h_LeptonMom.at(i_f)->Integral("width") << std::endl;
-    std::cout << h_LeptonAngle.at(i_f)->Integral("width") << std::endl;
 
   }
 

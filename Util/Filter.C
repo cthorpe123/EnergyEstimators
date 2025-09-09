@@ -2,7 +2,9 @@
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
-const std::string generator = "GENIE";
+const double _EPSILON_ = 0.01;
+
+const std::string generator = "GiBUU";
 const int target_nu_pdg = 14;
 
 void Filter(){
@@ -39,10 +41,23 @@ void Filter(){
   for(Long64_t ievent=0;ievent<t_in->GetEntries();ievent++){
 
     t_in->GetEntry(ievent);
+    //if(ievent > 100000) break;
     if(ievent % 50000 == 0) std::cout << "Event " << ievent << "/" << t_in->GetEntries() << std::endl;
 
     if(abs(nu_pdg) != target_nu_pdg || ccnc != 1) continue;
     if(GetNProt(pdg,p4) < 1) continue;
+
+    bool bad_event = false;
+    for(size_t i_p=0;i_p<pdg->size();i_p++){
+      if(masses.find(abs(pdg->at(i_p))) != masses.end()){
+        if(abs(p4->at(i_p).M() - masses.at(abs(pdg->at(i_p)))) > _EPSILON_){
+          //std::cout << pdg->at(i_p) << "  " << p4->at(i_p).M() << std::endl;
+          bad_event = true;
+        }
+      }
+    }
+       
+    if(bad_event) continue; 
 
     W = CalcW(pdg,p4);
     nprot = GetNProt(pdg,p4);
@@ -50,13 +65,16 @@ void Filter(){
     std::vector<TVector3> neutron_mom = GetNeutronMom(pdg,p4);
     std::vector<TVector3> pion_mom = GetParticleMom(pdg,p4,211);
     std::vector<TVector3> pizero_mom = GetParticleMom(pdg,p4,111);
-   
+
     for(int i_e=0;i_e<kMAX;i_e++)
       est_nu_e.at(i_e) = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,neutron_mom,i_e);
     
     t_out->Fill();    
 
   } 
+
+
+  std::cout << t_out->GetEntries() << std::endl;
 
   t_out->Write();
   f_out->Close();

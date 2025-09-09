@@ -71,7 +71,7 @@ void BiasWithCuts(){
       
     hs->Draw("nostack HIST");
     l->Draw();
-    c->Print(("Plots/BiasWithCuts_"+gen+label+".png").c_str());
+    c->Print(("Plots/BiasWithCuts_"+gen+label+".pdf").c_str());
     l->Clear();
     c->Clear();
 

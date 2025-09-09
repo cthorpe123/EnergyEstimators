@@ -1,12 +1,12 @@
-#include "Funcs/Funcs.h"
-#include "Funcs/OscFitter.h"
+#include "../Funcs/Funcs.h"
+#include "../Funcs/OscFitter.h"
 
 void DrawOscProbabilities(){
 
   OscModel osc_model;
 
   // Load the numu flux histogram
-  TFile* f_flux = TFile::Open("Flux/DUNE_FD_Flux.root");
+  TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
   TH1D* h_flux = static_cast<TH1D*>(f_flux->Get("numu_flux"));
   TH1D* h_flux_osc = static_cast<TH1D*>(f_flux->Get("numu_fluxosc"));
   h_flux->SetDirectory(0);

@@ -4,10 +4,10 @@
 
 void MakeResponseMatrices(){
 
-  bool nue_mode = true;
+  bool nue_mode = false;
 
   std::vector<std::string> InputFiles_v;
-  if(!nue_mode) InputFiles_v = {"GENIEEventsFiltered.root"/*,"NuWroEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root"*/};
+  if(!nue_mode) InputFiles_v = {"GENIEEventsFiltered.root","NuWroEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root"};
   else InputFiles_v = {"GENIE_NueEventsFiltered.root","NuWro_NueEventsFiltered.root","NEUT_NueEventsFiltered.root","GiBUU_NueEventsFiltered.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 

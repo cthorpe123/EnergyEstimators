@@ -6,7 +6,7 @@
 
 std::map<int,std::pair<double,double>> thresholds = {
   {13,{0.1,5.0}},
-  {2212,{0.3,2.0}},
+  {2212,{0.3,5.0}},
   {211,{0.1,5.0}},
   {111,{0.0,5.0}}
   //{321,{0.2,5.0}}
@@ -16,19 +16,19 @@ std::map<int,std::pair<double,double>> thresholds = {
 // Table of particle masses 
 
 const std::map<int,double> masses = {
-  {13,0.106},
-  {2112,0.938},
-  {2212,0.935},
-  {211,0.140},
-  {111,0.135}
+  {13,0.10566},
+  {2112,0.93957},
+  {2212,0.93827},
+  {211,0.13957},
+  {111,0.13498}
 };
 
-const double Mp = 0.935;
-const double Mn = 0.938;
+const double Mp = 0.93827;
+const double Mn = 0.93957;
 const double Eb = 0.03;
-const double ml = 0.106;
-const double mpi = 0.140;
-const double mpi0 = 0.135;
+const double ml = 0.10566;
+const double mpi = 0.13957;
+const double mpi0 = 0.13498;
 const double MA = 22*Mn + 18*Mp - 0.34381;
 const double MA1 = MA - Mn;
 
@@ -41,8 +41,9 @@ double CalcW(const std::vector<int>* pdg_v,const std::vector<TLorentzVector>* p4
   for(int i_p=0;i_p<pdg_v->size();i_p++){
     const int& pdg = pdg_v->at(i_p);
     const double p = p4_v->at(i_p).Vect().Mag();   
-    if(thresholds.find(abs(pdg)) != thresholds.end() && p > thresholds.at(abs(pdg)).first && p < thresholds.at(abs(pdg)).second)
+    if(thresholds.find(abs(pdg)) != thresholds.end() && p > thresholds.at(abs(pdg)).first && p < thresholds.at(abs(pdg)).second){
       p4_tot += p4_v->at(i_p);
+    }
   }
 
   return p4_tot.M();
@@ -108,6 +109,7 @@ std::vector<TVector3> GetNeutronMom(const std::vector<int>* pdg_v,const std::vec
 
 enum estimators { kMuonKin , kMuonKinWNP , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMAX };
 const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
+const std::vector<std::string> estimators_leg = { "CCQE-like" , "W^{2}" , "Proton-Based"  , "Calorimetric" , "SF" };
 const std::vector<int> colors = {kCyan+2,kBlue,kRed,kMagenta,kGreen+1};
 
 double T2KEnergy(const TLorentzVector* plepton){
