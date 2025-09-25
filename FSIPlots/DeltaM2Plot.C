@@ -1,6 +1,7 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
+#include "../Funcs/PlotSetup.h"
 
 OscModel data_osc_model;
 OscModel fit_osc_model;
@@ -9,6 +10,8 @@ bool makeloadsofplots = true;
 
 void DeltaM2Plot(){
 
+  PlotSetup(); 
+
   // Load the histograms
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 
@@ -16,24 +19,6 @@ void DeltaM2Plot(){
 
   gSystem->Exec("mkdir -p Plots/");
   gSystem->Exec("mkdir -p Plots/FitPlots/");
-
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
@@ -194,13 +179,15 @@ void DeltaM2Plot(){
       h_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
       h_fit_results.at(i_e)->SetLineWidth(2); 
       hs->Add(h_fit_results.at(i_e));
-      l->AddEntry(h_fit_results.at(i_e),estimators_str.at(i_e).c_str(),"L");
+      l->AddEntry(h_fit_results.at(i_e),estimators_leg.at(i_e).c_str(),"L");
     }
 
     hs->Draw("HIST nostack"); 
     hs->SetMinimum(min_fit_ratio-0.1*(max_fit_ratio-min_fit_ratio));
     hs->SetMaximum(max_fit_ratio+0.1*(max_fit_ratio-min_fit_ratio));
     f_line->Draw("L same");
+    hs->GetXaxis()->SetNdivisions(6);
+    SetAxisFonts(hs);
     c->Print(("Plots/FitResults_"+gen+".pdf").c_str());
     p_plot->Clear();
     l->Clear();

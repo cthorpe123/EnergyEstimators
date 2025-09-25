@@ -2,6 +2,7 @@
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
 #include "../Funcs/Smearing.h"
+#include "../Funcs/PlotSetup.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -11,7 +12,9 @@ OscModel osc_model;
 double fid_mass = 1; // active mass in KT
 double POT = 1; // POT in 10^21
 
-void NueRates_tmp(){
+void NueRates(){
+
+  PlotSetup();
 
   bool make_smear_plots = true;
 
@@ -85,8 +88,8 @@ void NueRates_tmp(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 10000) break;
-      if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
+      //if(ievent > 100000) break;
+      if(ievent % 50000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
       osc_model.SetDeltaCP(0);
@@ -134,16 +137,47 @@ void NueRates_tmp(){
 
   }
 
+  // Reco energy plots scaled to 1 KT x 1e21 POT of exposure
+  for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+    for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+      for(int i=1;i<h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->GetNbinsX()+1;i++){
+        double cv = Rate(total_flux,h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->GetBinContent(i));
+        double plus = Rate(total_flux,h_RecoEnergy_DeltaCP_Plus.at(i_f).at(i_e)->GetBinContent(i));
+        double minus = Rate(total_flux,h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->GetBinContent(i));
+        h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->SetBinContent(i,cv);
+        h_RecoEnergy_DeltaCP_Plus.at(i_f).at(i_e)->SetBinContent(i,plus);
+        h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->SetBinContent(i,minus);
+        h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->SetBinError(i,sqrt(cv));
+        h_RecoEnergy_DeltaCP_Plus.at(i_f).at(i_e)->SetBinError(i,sqrt(plus));
+        h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->SetBinError(i,sqrt(minus));
+      }
+    }
+  }   
+
+  if(make_smear_plots){
+    for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+      for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+        for(int i=1;i<h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->GetNbinsX()+1;i++){
+          double cv = Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->GetBinContent(i));
+          double plus = Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->GetBinContent(i));
+          double minus = Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->GetBinContent(i));
+          h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->SetBinContent(i,cv);
+          h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->SetBinContent(i,plus);
+          h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->SetBinContent(i,minus);
+          h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->SetBinError(i,sqrt(cv));
+          h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->SetBinError(i,sqrt(plus));
+          h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->SetBinError(i,sqrt(minus));
+        }
+      }
+    }   
+  }
+
+
   TFile* f_out = new TFile("NueRatesDeltaCP.root","RECREATE");
 
   // Reco energy plots scaled to 1 KT x 1e21 POT of exposure
   for(size_t i_e=0;i_e<estimators_str.size();i_e++){
     for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-      for(int i=1;i<h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->GetNbinsX()+1;i++){
-        h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->GetBinContent(i)));
-        h_RecoEnergy_DeltaCP_Plus.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_DeltaCP_Plus.at(i_f).at(i_e)->GetBinContent(i)));
-        h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->GetBinContent(i)));
-      }
       h_RecoEnergy_DeltaCP_CV.at(i_f).at(i_e)->Write();
       h_RecoEnergy_DeltaCP_Plus.at(i_f).at(i_e)->Write();
       h_RecoEnergy_DeltaCP_Minus.at(i_f).at(i_e)->Write();
@@ -153,11 +187,6 @@ void NueRates_tmp(){
   if(make_smear_plots){
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){
       for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-        for(int i=1;i<h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->GetNbinsX()+1;i++){
-          h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->GetBinContent(i)));
-          h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->GetBinContent(i)));
-          h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->SetBinContent(i,Rate(total_flux,h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->GetBinContent(i)));
-        }
         h_RecoEnergy_Smeared_DeltaCP_CV.at(i_f).at(i_e)->Write();
         h_RecoEnergy_Smeared_DeltaCP_Plus.at(i_f).at(i_e)->Write();
         h_RecoEnergy_Smeared_DeltaCP_Minus.at(i_f).at(i_e)->Write();

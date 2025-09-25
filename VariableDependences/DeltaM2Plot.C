@@ -1,6 +1,7 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
+#include "../Funcs/PlotSetup.h"
 
 bool makeloadsofplots = true;
 
@@ -93,6 +94,10 @@ void DoFit(TH1D* h_flux,TH2D* h_data_true_reco,TH2D* h_model_true_reco,TH1D* h_d
 
 void DeltaM2Plot(){
 
+  PlotSetup(); 
+
+  c->SetCanvasSize(800,450);
+
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
   // Load the numu flux histogram
@@ -102,25 +107,7 @@ void DeltaM2Plot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
-  std::string var = "MissingE";
+  std::string var = "Neutrons";
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 
@@ -158,8 +145,6 @@ void DeltaM2Plot(){
       TH1D* h_fit_results = h->ProjectionZ();
       std::vector<Double_t> x_fit_results;
       std::vector<Double_t> y_fit_results;
-      //h_fit_results.push_back(h->ProjectionZ());
-      //h_fit_results.back()->Reset();
 
       axis_title = h->GetZaxis()->GetTitle();
 
@@ -199,7 +184,11 @@ void DeltaM2Plot(){
           l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
           l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
           l->AddEntry((TObject*)0,("Input #Delta m^{2}="+std::to_string(true_deltamsq23)+" Measured #Delta m^{2}="+std::to_string(meas_deltamsq23)).c_str(),"");
-          c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + std::to_string(i_dm) + "_" + gen + "_" + est +".pdf").c_str());
+          std::string point;
+          if(i_dm < 10) point = "00" + std::to_string(i_dm);
+          else if(i_dm < 100) point = "0" + std::to_string(i_dm);
+          else if(i_dm < 1000) point = std::to_string(i_dm);
+          c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + point + "_" + gen + "_" + est +".png").c_str());
           p_plot->Clear();
           l->Clear();
         } 
@@ -235,13 +224,14 @@ void DeltaM2Plot(){
       g_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
       g_fit_results.at(i_e)->SetLineWidth(2); 
       mg->Add(g_fit_results.at(i_e));
-      l->AddEntry(g_fit_results.at(i_e),estimators_str.at(i_e).c_str(),"L");
+      l->AddEntry(g_fit_results.at(i_e),estimators_leg.at(i_e).c_str(),"L");
     }
 
     p_plot->cd();
     mg->Draw("AL"); 
     f_line->Draw("L same");
-    mg->GetYaxis()->SetRangeUser(std::min(0.95,min_fit_ratio),std::max(1.05,max_fit_ratio));
+    SetAxisFontsMG(mg);
+    mg->GetYaxis()->SetRangeUser(std::min(0.975,min_fit_ratio),std::max(1.025,max_fit_ratio));
     c->Print(("Plots/"+var+"/"+"DeltaM2FitResults_"+gen+".pdf").c_str());
     p_plot->Clear();
     l->Clear();

@@ -1,6 +1,7 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
+#include "../Funcs/PlotSetup.h"
 
 bool makeloadsofplots = true;
 
@@ -104,25 +105,11 @@ bool DoFit(TH1D* h_flux,TH2D* h_data_true_reco,TH2D* h_model_true_reco,TH1D* h_d
 
 void DeltaCPPlot(){
 
+  PlotSetup(); 
+
+  c->SetCanvasSize(800,450);
+
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
-
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
@@ -131,7 +118,7 @@ void DeltaCPPlot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  std::string var = "MissingE";
+  std::string var = "Neutrons";
 
   TFile* f = TFile::Open("ResponseMatricesNue.root");
 
@@ -244,7 +231,7 @@ void DeltaCPPlot(){
 
       }
 
-      std::string title = ";"+axis_title+"Measured #delta_{CP} - Input #delta_{CP}";
+      std::string title = ";"+axis_title+"Measured #delta_{CP} - Input #delta_{CP} (rad)";
       //THStack* hs = new THStack("hs",title.c_str());     
       TMultiGraph* mg = new TMultiGraph("mg",title.c_str());
 
@@ -258,12 +245,13 @@ void DeltaCPPlot(){
         g_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
         g_fit_results.at(i_e)->SetLineWidth(2); 
         mg->Add(g_fit_results.at(i_e));
-        l->AddEntry(g_fit_results.at(i_e),estimators_str.at(i_e).c_str(),"L");
+        l->AddEntry(g_fit_results.at(i_e),estimators_leg.at(i_e).c_str(),"L");
       }
 
       mg->Draw("AL"); 
       mg->GetYaxis()->SetRangeUser(std::min(-0.05,min_fit_ratio),std::max(0.05,max_fit_ratio));
       f_line->Draw("L same");
+      SetAxisFontsMG(mg);
       
       c->Print(("Plots/"+var+"/"+"DeltaCPFitResults_"+labels.at(i_dcp)+"_"+gen+".pdf").c_str());
       p_plot->Clear();

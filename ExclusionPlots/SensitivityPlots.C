@@ -1,6 +1,7 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
+#include "../Funcs/PlotSetup.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -16,7 +17,9 @@ double scale_nue = 1;
 
 void SensitivityPlots(){
 
-  bool make_smear_plots = false;
+  PlotSetup();
+
+  bool make_smear_plots = true;
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
@@ -141,29 +144,14 @@ void SensitivityPlots(){
 
   gSystem->Exec("mkdir -p Plots/");
 
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
   h_axes->Draw("HIST");
+  SetAxisFontsH(h_axes); 
   h_axes->SetMinimum(0.45);
   h_axes->SetMaximum(1.25);
   h_axes->SetStats(0);
   for(int i_e=0;i_e<kMAX;i_e++) h_axes->GetXaxis()->SetBinLabel(i_e+1,estimators_leg.at(i_e).c_str());
+  h_axes->GetXaxis()->SetLabelOffset(0.01);
+  h_axes->GetXaxis()->SetLabelSize(0.065);
 
   std::vector<TGraph*> legs;
   for(size_t i_f=0;i_f<Generators_v.size();i_f++){
@@ -186,6 +174,9 @@ void SensitivityPlots(){
 
   ref = g_chi2_deltam2_minus.at(kMuonKinWNP).at(0)->GetY()[0];
   h_axes->Draw("HIST");
+  SetAxisFontsH(h_axes); 
+  h_axes->GetXaxis()->SetLabelOffset(0.01);
+  h_axes->GetXaxis()->SetLabelSize(0.065);
   for(size_t i_f=0;i_f<Generators_v.size();i_f++){
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){
       g_chi2_deltam2_minus.at(i_e).at(i_f)->GetY()[0] /= ref;
@@ -198,6 +189,9 @@ void SensitivityPlots(){
 
   ref = g_chi2_deltacp_plus.at(kMuonKinWNP).at(0)->GetY()[0];
   h_axes->Draw("HIST");
+  SetAxisFontsH(h_axes); 
+  h_axes->GetXaxis()->SetLabelOffset(0.01);
+  h_axes->GetXaxis()->SetLabelSize(0.065);
   for(size_t i_f=0;i_f<Generators_v.size();i_f++){
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){
       g_chi2_deltacp_plus.at(i_e).at(i_f)->GetY()[0] /= ref;
@@ -209,6 +203,9 @@ void SensitivityPlots(){
   p_plot->Clear();
 
   h_axes->Draw("HIST");
+  SetAxisFontsH(h_axes); 
+  h_axes->GetXaxis()->SetLabelOffset(0.01);
+  h_axes->GetXaxis()->SetLabelSize(0.065);
   ref = g_chi2_deltacp_minus.at(kMuonKinWNP).at(0)->GetY()[0];
   for(size_t i_f=0;i_f<Generators_v.size();i_f++){
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){

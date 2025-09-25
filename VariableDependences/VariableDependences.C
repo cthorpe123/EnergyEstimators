@@ -1,15 +1,18 @@
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/Funcs.h"
+#include "../Funcs/PlotSetup.h"
 #include "TLorentzVector.h"
 
 void VariableDependences(){
+
+  PlotSetup(); 
 
   bool rebin = false;
 
   std::vector<std::string> InputFiles_v = {"GENIEEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root","NuWroEventsFiltered.root"};
   std::vector<std::string> Generators_v = {"GENIE","NEUT","GiBUU","NuWro"};
   std::vector<std::string> vars = {"W","Energy","Angle","MissingE","Neutrons"};
-  std::vector<std::string> axis_titles = {"W_{vis} (GeV)","E_{true} (GeV)","#theta (rad.)","Missing Hadronic Energy (GeV)","FS Neutrons"};
+  std::vector<std::string> axis_titles = {"W_{vis} (GeV)","E_{true} (GeV)","#theta_{lepton} (rad.)","Missing Hadronic Energy (GeV)","FS Neutrons"};
 
   std::vector<std::vector<std::vector<TH2D*>>> h_EnergyBias(kMAX,std::vector<std::vector<TH2D*>>(Generators_v.size(),std::vector<TH2D*>(vars.size())));
   std::vector<std::vector<std::vector<TH3D*>>> h_TrueEnergy_RecoEnergy(kMAX,std::vector<std::vector<TH3D*>>(Generators_v.size(),std::vector<TH3D*>(vars.size())));
@@ -154,24 +157,6 @@ void VariableDependences(){
 
   gSystem->Exec("mkdir -p Plots/");
 
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
   // Bias AFO difference variables
   for(size_t i_v=0;i_v<vars.size();i_v++){
 
@@ -205,16 +190,22 @@ void VariableDependences(){
         h_Variance.back()->SetLineWidth(2);
         hs_Variance->Add(h_Variance.back());
 
-        l->AddEntry(h_Bias.back(),est.c_str(),"L");
+        l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L");
 
       }
 
       p_plot->cd();
       hs_Bias->Draw("nostack HIST");
+      SetAxisFonts(hs_Bias);
+      hs_Bias->SetMaximum(0.06);
+      hs_Bias->SetMinimum(-0.5);
       c->Print(("Plots/"+var+"/Bias_"+gen+".pdf").c_str());  
       p_plot->Clear();
 
       hs_Variance->Draw("nostack HIST");
+      SetAxisFonts(hs_Variance);
+      hs_Variance->SetMaximum(0.3);
+      hs_Variance->SetMinimum(0);
       c->Print(("Plots/"+var+"/Variance_"+gen+".pdf").c_str());  
       p_plot->Clear();
       l->Clear();
@@ -247,6 +238,7 @@ void VariableDependences(){
 
     p_plot->cd();
     hs->Draw("HIST nostack");
+    SetAxisFonts(hs);
     c->Print(("Plots/"+var+"/Dist.pdf").c_str());
     p_plot->Clear();
 
@@ -262,11 +254,6 @@ void VariableDependences(){
     std::string axis_title = axis_titles.at(i_v);
 
     // Calculate the difference in bias between the difference generators - calculate spread  
-    std::vector<TH1D*> h_band_low(kMAX);
-    std::vector<TH1D*> h_band_high(kMAX);
-    std::vector<TH1D*> h_band_width(kMAX);
-    std::vector<TH1D*> h_band_sigma(kMAX);
-    std::vector<TH1D*> h_band_center(kMAX);
     std::vector<std::vector<TH1D*>> h_bias(kMAX,std::vector<TH1D*>(InputFiles_v.size()));
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
@@ -274,26 +261,6 @@ void VariableDependences(){
       if(var == "W" && i_e == kSFMethod) continue;
 
       std::string est = estimators_str.at(i_e);
-
-      h_band_low.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_low_"+est+"_"+var).c_str()); 
-      h_band_high.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_high_"+est+"_"+var).c_str()); 
-      h_band_width.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_width_"+est+"_"+var).c_str()); 
-      h_band_center.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_center_"+est+"_"+var).c_str()); 
-      h_band_sigma.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0).at(i_v)->ProjectionZ(("band_sigma_"+est+"_"+var).c_str()); 
-      h_band_center.at(i_e)->Reset();
-      h_band_sigma.at(i_e)->Reset();
-
-      if(rebin && var == "W"){
-        h_band_low.at(i_e)->Rebin();
-        h_band_high.at(i_e)->Rebin();
-        h_band_width.at(i_e)->Rebin();
-        h_band_center.at(i_e)->Rebin();
-        h_band_sigma.at(i_e)->Rebin();
-      }
-      for(int i=1;i<h_band_low.at(i_e)->GetNbinsX()+1;i++){
-        h_band_low.at(i_e)->SetBinContent(i,10);
-        h_band_high.at(i_e)->SetBinContent(i,-10);
-      }
 
       THStack* hs_Bias = new THStack(("hs_Bias_"+var+"_"+est).c_str(),(";"+axis_title+";Frac. Bias").c_str());
 
@@ -305,20 +272,6 @@ void VariableDependences(){
         h_bias.at(i_e).at(i_f) = new TH1D(("h_Bias2_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
         TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",points.at(i_v),binning_a.at(i_v));
         MakeBiasVarianceFrom3D(h,h_bias.at(i_e).at(i_f),h_variance); 
-
-        if(rebin && var == "W"){
-          h_bias.at(i_e).at(i_f)->Rebin();
-          h_variance->Rebin();
-          h_bias.at(i_e).at(i_f)->Scale(0.5);
-          h_variance->Scale(0.5);
-        }
-
-        for(int i=1;i<h_bias.at(i_e).at(i_f)->GetNbinsX()+1;i++){
-          h_band_low.at(i_e)->SetBinContent(i,std::min(h_band_low.at(i_e)->GetBinContent(i),h_bias.at(i_e).at(i_f)->GetBinContent(i)));
-          h_band_high.at(i_e)->SetBinContent(i,std::max(h_band_high.at(i_e)->GetBinContent(i),h_bias.at(i_e).at(i_f)->GetBinContent(i)));
-          h_band_width.at(i_e)->SetBinContent(i,h_band_high.at(i_e)->GetBinContent(i) - h_band_low.at(i_e)->GetBinContent(i));
-          h_band_center.at(i_e)->AddBinContent(i,h_bias.at(i_e).at(i_f)->GetBinContent(i)/InputFiles_v.size());
-        }
 
         delete h;
         delete h_variance;
@@ -333,46 +286,14 @@ void VariableDependences(){
 
       p_plot->cd();
       hs_Bias->Draw("nostack HIST");
-      hs_Bias->SetMinimum(bias_ranges.at(i_v).first);
-      hs_Bias->SetMaximum(bias_ranges.at(i_v).second);
+      hs_Bias->SetMinimum(-0.62);
+      hs_Bias->SetMaximum(0.12);
+      SetAxisFonts(hs_Bias);
       c->Print(("Plots/"+var+"/Bias_Bands"+est+".pdf").c_str()); 
       p_plot->Clear();
       l->Clear();
 
     }
-
-    // Also draw the width of the band
-
-    THStack* hs_Width = new THStack(("hs_Width_"+var).c_str(),(";"+axis_title+";Band Width").c_str());
-
-    for(size_t i_e=0;i_e<kMAX;i_e++){
-      if(var == "W" && i_e == kSFMethod) continue;
-      std::string est = estimators_str.at(i_e);
-
-      for(int i=1;i<h_band_center.at(i_e)->GetNbinsX()+1;i++){
-        for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-          h_band_sigma.at(i_e)->AddBinContent(i,pow(h_bias.at(i_e).at(i_f)->GetBinContent(i) - h_band_center.at(i_e)->GetBinContent(i),2)/InputFiles_v.size());
-        }
-        h_band_sigma.at(i_e)->SetBinContent(i,sqrt(h_band_sigma.at(i_e)->GetBinContent(i)));
-      }
-/*
-      h_band_width.at(i_e)->SetLineColor(colors.at(i_e));
-      h_band_width.at(i_e)->SetLineWidth(2);
-      l->AddEntry(h_band_width.at(i_e),est.c_str(),"L");
-      hs_Width->Add(h_band_width.at(i_e));
-*/
-      h_band_sigma.at(i_e)->SetLineColor(colors.at(i_e));
-      h_band_sigma.at(i_e)->SetLineWidth(2);
-      l->AddEntry(h_band_sigma.at(i_e),est.c_str(),"L");
-      hs_Width->Add(h_band_sigma.at(i_e));
-
-    } 
-
-    p_plot->cd();
-    hs_Width->Draw("nostack HIST");
-    c->Print(("Plots/"+var+"/Bias_Bands_Widths.pdf").c_str()); 
-    p_plot->Clear();
-    l->Clear(); 
 
   }
 

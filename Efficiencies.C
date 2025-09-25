@@ -1,11 +1,14 @@
 #include "Funcs/EnergyEstimatorFuncs.h"
 #include "Funcs/Funcs.h"
 #include "TLorentzVector.h"
+#include "Funcs/PlotSetup.h"
 
 double osc_strength = 0.0;
 std::vector<int> styles = {1,2,7,9};
 
 void Efficiencies(){
+
+  PlotSetup();
 
   std::vector<std::string> InputFiles_v = {"GENIEEvents.root","NuWroEvents.root","NEUTEvents.root","GiBUUEvents.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
@@ -60,7 +63,7 @@ void Efficiencies(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 50000) break;
+      if(ievent > 50000) break;
       if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -91,24 +94,6 @@ void Efficiencies(){
 
   gSystem->Exec("mkdir -p Plots/EfficiencyPlots/");
 
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
     THStack* hs = new THStack("hs",";True Neutrino Energy (GeV);Fraction");
 
@@ -132,9 +117,7 @@ void Efficiencies(){
 
     p_plot->cd();
     hs->Draw("HIST nostack");
-
-    p_legend->cd();
-    l->Draw();
+    SetAxisFonts(hs);
 
     c->Print(("Plots/EfficiencyPlots/"+Generators_v.at(i_f)+".pdf").c_str());
     l->Clear();
@@ -170,8 +153,8 @@ void Efficiencies(){
  
   p_plot->cd(); 
   hs_all->Draw("nostack HIST");
-  p_legend->cd();
-  l->Draw();
+  SetAxisFonts(hs_all);
+
   c->Print("Plots/EfficiencyPlots/Efficiencies.pdf");
   c->Close();
 

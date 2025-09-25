@@ -26,12 +26,12 @@ void DeltaM2Plot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  for(size_t i_f=0;i_f<Generators_v.size();i_f++){
+  for(size_t i_f=1;i_f<Generators_v.size();i_f++){
     std::string gen = Generators_v.at(i_f);    
 
     std::vector<TH1D*> h_fit_results(estimators_str.size());
     for(size_t i_e=0;i_e<estimators_str.size();i_e++)
-      h_fit_results.at(i_e) = new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+gen).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",100,0.8*c_osc::deltamsq23,1.2*c_osc::deltamsq23);
+      h_fit_results.at(i_e) = new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+gen).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",50,0.8*c_osc::deltamsq23,1.2*c_osc::deltamsq23);
 
     double true_theta13 = c_osc::theta13;
     double true_theta23 = c_osc::theta23;
@@ -68,7 +68,7 @@ void DeltaM2Plot(){
           for(int i=1;i<h_data_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_data_true_reco->GetXaxis()->GetBinCenter(i);
-            if(E < 0.8 || E > 5.0) continue;
+            if(E < 0.8 || E > 5) continue;
             events += data_osc_model.NuMuSurvProb(E)*h_data_true_reco->GetBinContent(i,j)*flux;
           }
           h_data_reco->SetBinContent(j,events);
@@ -88,7 +88,7 @@ void DeltaM2Plot(){
           for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
-            if(E < 0.8 || E > 5.0) continue;
+            if(E < 0.8 || E > 5) continue;
             events += data_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
           }
           h_model_reco_prefit->SetBinContent(j,events);
@@ -106,16 +106,18 @@ void DeltaM2Plot(){
             for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
-            if(E < 0.8 || E > 5.0) continue;
+            if(E < 0.8 || E > 5) continue;
             events += fit_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
             }
             h_model_reco->SetBinContent(j,events);
             }
 
+            h_model_reco->Scale(coeff[2]);
+
             double chi2 = 0.0;
             for(int j=1;j<nbins+1;j++){
             if(h_data_reco->GetBinContent(j) > 0)
-            chi2 += pow((h_model_reco->GetBinContent(j) - h_data_reco->GetBinContent(j))/sqrt(h_data_reco->GetBinContent(j)),2);         
+            chi2 += pow((h_model_reco->GetBinContent(j) - h_data_reco->GetBinContent(j))/*/sqrt(h_data_reco->GetBinContent(j))*/,2);         
             }
 
             return chi2/nbins*100000;
@@ -127,6 +129,7 @@ void DeltaM2Plot(){
 
         fMinimizer->SetVariable(0,"deltamsq23",true_deltamsq23,0.01*c_osc::deltamsq23);
         fMinimizer->SetVariable(1,"amp",data_osc_model.numu_dis_amp,0.001*data_osc_model.numu_dis_amp);
+        fMinimizer->SetVariable(2,"scale",1.0,0.01);
 
         fMinimizer->SetFunction(min);
         fMinimizer->Minimize();
@@ -143,18 +146,19 @@ void DeltaM2Plot(){
           h_model_reco->SetLineColor(2);
           h_model_reco->SetLineWidth(2);
           h_model_reco_prefit->Draw("HIST same");
-          h_model_reco_prefit->SetLineColor(2);
-          h_model_reco_prefit->SetLineStyle(2);
+          h_model_reco_prefit->SetLineColor(3);
           h_model_reco_prefit->SetLineWidth(2);
           h_data_reco->SetTitle(("Input #Delta m^{2}="+std::to_string(true_deltamsq23)+" Measured #Delta m^{2}="+std::to_string(meas_deltamsq23)).c_str());
           l->AddEntry(h_data_reco,(gen+" FD").c_str(),"L");
           l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
           l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
           l->Draw();
-          //c->Print(("Plots/DeltaM2Plots/" + gen + "_" + estimators_str.at(i_e) +".png").c_str());
-          c->Print(("Plots/FitPlots/"+gen+"/"+estimators_str.at(i_e)+"/Point_" + std::to_string(i_dm) + "_" + gen + "_" + estimators_str.at(i_e) +".png").c_str());
+          //c->Print(("Plots/DeltaM2Plots/" + gen + "_" + estimators_str.at(i_e) +".pdf").c_str());
+          c->Print(("Plots/FitPlots/"+gen+"/"+estimators_str.at(i_e)+"/Point_" + std::to_string(i_dm) + "_" + gen + "_" + estimators_str.at(i_e) +".pdf").c_str());
           c->Clear();
           l->Clear();
+
+
         } 
 
         h_fit_results.at(i_e)->SetBinContent(i_dm,meas_deltamsq23/true_deltamsq23);
@@ -178,11 +182,17 @@ void DeltaM2Plot(){
       l->AddEntry(h_fit_results.at(i_e),estimators_str.at(i_e).c_str(),"L");
     }
 
+    TF1* func = new TF1("func","1");
+    func->SetLineColor(1);
+    func->SetLineWidth(2);
+    func->SetLineStyle(9);
+
     hs->Draw("HIST nostack"); 
     hs->SetMinimum(min_fit_ratio-0.1*(max_fit_ratio-min_fit_ratio));
     hs->SetMaximum(max_fit_ratio+0.1*(max_fit_ratio-min_fit_ratio));
+    func->Draw("L same");
     l->Draw();
-    c->Print(("Plots/FitResults_"+gen+".png").c_str());
+    c->Print(("Plots/FitResults_"+gen+".pdf").c_str());
     c->Clear();
     l->Clear();
 

@@ -1,8 +1,11 @@
 #include "../Funcs/Funcs.h"
+#include "../Funcs/PlotSetup.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "TLorentzVector.h"
 
 void FSIStudy(){
+
+  PlotSetup(); 
 
   std::vector<std::string> InputFiles_v = {"GENIEEvents2.root","NuWroEvents2.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro"};
@@ -106,31 +109,13 @@ void FSIStudy(){
 
   gSystem->Exec("mkdir -p Plots/");
 
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
   for(size_t i_e=0;i_e<estimators_str.size();i_e++){
     for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
       std::string est = estimators_str.at(i_e);
       std::string gen = Generators_v.at(i_f);
 
-      THStack* hs = new THStack("hs",";(E_{est} - E_{true})/E_{true};");
+      THStack* hs = new THStack("hs",";(_{}E_{est} - E_{true})/E_{true};");
 
       TH1D* h = h_EnergyBias.at(i_e).at(i_f);
       h->SetLineWidth(2);
@@ -145,6 +130,7 @@ void FSIStudy(){
       hs->Add(h_nofsi);
 
       hs->Draw("HIST nostack");
+      SetAxisFonts(hs);
       c->Print(("Plots/BiasShape_"+ est + "_" + gen + ".pdf").c_str());
       p_plot->Clear();
       l->Clear();
@@ -176,7 +162,7 @@ void FSIStudy(){
       h_Bias.back()->SetLineWidth(2);
       h_Bias.back()->SetLineColor(colors.at(i_e));
       hs_Bias->Add(h_Bias.back());
-      l->AddEntry(h_Bias.back(),est.c_str(),"L"); 
+      l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L"); 
 
       h_Variance.back()->SetLineWidth(2);
       h_Variance.back()->SetLineColor(colors.at(i_e));
@@ -200,10 +186,12 @@ void FSIStudy(){
     }
 
     hs_Bias->Draw("HIST nostack");
+    SetAxisFonts(hs_Bias);
     c->Print(("Plots/Bias_"+gen+".pdf").c_str());
     p_plot->Clear();
 
     hs_Variance->Draw("HIST nostack");
+    SetAxisFonts(hs_Variance);
     c->Print(("Plots/Variance_"+gen+".pdf").c_str());
     p_plot->Clear();
 
@@ -220,7 +208,7 @@ void FSIStudy(){
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
     std::string gen = Generators_v.at(i_f);
-    THStack* hs_Change = new THStack(("hs_Change"+gen).c_str(),";(E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};");
+    THStack* hs_Change = new THStack(("hs_Change"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};");
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -232,10 +220,11 @@ void FSIStudy(){
       h->SetLineWidth(2);
       h->SetLineColor(colors.at(i_e));
       hs_Change->Add(h);
-      l->AddEntry(h,est.c_str(),"L"); 
+      l->AddEntry(h,estimators_leg.at(i_e).c_str(),"L"); 
     }
 
     hs_Change->Draw("nostack HIST");
+    SetAxisFonts(hs_Change);
     c->Print(("Plots/Change_"+gen+".pdf").c_str()); 
     p_plot->Clear();
     l->Clear();
@@ -247,7 +236,7 @@ void FSIStudy(){
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
     std::string gen = Generators_v.at(i_f);
-    THStack* hs_Change_Abs = new THStack(("hs_Change_Abs"+gen).c_str(),";|E_{est}^{FSI} - E_{est}^{No FSI}|/E_{est}^{No FSI};");
+    THStack* hs_Change_Abs = new THStack(("hs_Change_Abs"+gen).c_str(),";|_{}E_{est}^{FSI} - E_{est}^{No FSI}|/E_{est}^{No FSI};");
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -259,10 +248,11 @@ void FSIStudy(){
       h->SetLineWidth(2);
       h->SetLineColor(colors.at(i_e));
       hs_Change_Abs->Add(h);
-      l->AddEntry(h,est.c_str(),"L"); 
+      l->AddEntry(h,estimators_leg.at(i_e).c_str(),"L"); 
     }
 
     hs_Change_Abs->Draw("nostack HIST");
+    SetAxisFonts(hs_Change_Abs);
     c->Print(("Plots/Change_Abs_"+gen+".pdf").c_str()); 
     p_plot->Clear();
     l->Clear();
@@ -283,14 +273,13 @@ void FSIStudy(){
       std::string est = estimators_str.at(i_e);
 
       TH2D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f); 
-      TH1D* h_bias = new TH1D(("h_Bias_"+gen+"_"+est).c_str(),"",nbins,binning_a);
-      TH1D* h_variance = new TH1D(("h_Variance_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      TH1D* h_bias = new TH1D(("h_Bias2_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",nbins,binning_a);
       GetBiasVariance(h,h_bias,h_variance); 
 
-
       TH2D* h_nofsi = h_TrueEnergy_RecoEnergy_NoFSI.at(i_e).at(i_f); 
-      TH1D* h_bias_nofsi = new TH1D(("h_Bias_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a);
-      TH1D* h_variance_nofsi = new TH1D(("h_Variance_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      TH1D* h_bias_nofsi = new TH1D(("h_Bias2_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      TH1D* h_variance_nofsi = new TH1D(("h_Variance2_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a);
       GetBiasVariance(h_nofsi,h_bias_nofsi,h_variance_nofsi); 
 
       h_Ratio.at(i_e).push_back(static_cast<TH1D*>(h_bias->Clone(("h_Ratio_"+est).c_str())));
@@ -315,12 +304,13 @@ void FSIStudy(){
       h_Ratio.at(i_e).at(i_f)->SetLineStyle(i_f+1);
       hs->Add(h_Ratio.at(i_e).at(i_f));
       //l->AddEntry(h_Ratio.at(i_e).at(i_f),Generators_v.at(i_f).c_str(),"L");
-      l->AddEntry(h_Ratio.at(i_e).at(i_f),(est+" "+gen).c_str(),"L");
+      l->AddEntry(h_Ratio.at(i_e).at(i_f),(estimators_leg.at(i_e)+" "+gen).c_str(),"L");
     }
 
   }
 
   hs->Draw("nostack HIST");
+  SetAxisFonts(hs);
   c->Print("Plots/Ratio.pdf"); 
   p_plot->Clear();
   l->Clear();
@@ -395,6 +385,7 @@ void FSIStudy(){
     }
 
     hs->Draw("nostack HIST");
+    SetAxisFonts(hs);
 
     c->Print(("Plots/Spectrum_"+est+".pdf").c_str()); 
     p_plot->Clear();
@@ -403,6 +394,5 @@ void FSIStudy(){
     delete hs;
 
   }
-
 
 }

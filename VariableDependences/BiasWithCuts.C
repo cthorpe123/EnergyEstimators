@@ -1,33 +1,17 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
+#include "../Funcs/PlotSetup.h"
 #include "../Funcs/OscFitter.h"
 
 void BiasWithCuts(){
+
+  PlotSetup(); 
 
   std::vector<std::string> Generators_v = {"GENIE"/*,"NuWro","NEUT","GiBUU"*/};
 
   std::vector<std::string> vars = {"W","Angle","MissingE","Neutrons"};
   std::vector<std::string> x_axis_titles = {"W_{cut} (GeV)","#theta_{cut}","E^{miss}_{cut} (GeV)","N_{cut}"};
   std::vector<std::string> y_axis_titles = {"B'(W_{cut}) - B","B'(#theta_{cut}) - B","B'(E^{miss}_{cut}) - B","B'(N_{cut}) - B",};
-
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 
@@ -91,12 +75,14 @@ void BiasWithCuts(){
         std::string est = estimators_str.at(i_e);
         h_Bias.at(i_e)->SetLineWidth(2);
         h_Bias.at(i_e)->SetLineColor(colors.at(i_e));
-        l->AddEntry(h_Bias.at(i_e),est.c_str(),"L");
+        l->AddEntry(h_Bias.at(i_e),estimators_leg.at(i_e).c_str(),"L");
         hs->Add(h_Bias.at(i_e));
       }
 
       hs->Draw("nostack HIST");
       f_line->Draw("L same");
+      SetAxisFonts(hs);
+      hs->GetYaxis()->SetTitleOffset(0.95);
       c->Print(("Plots/"+var+"/BiasWithCuts_"+gen+".pdf").c_str());
       l->Clear();
       p_plot->Clear();

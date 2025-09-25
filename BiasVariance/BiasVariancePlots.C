@@ -1,9 +1,12 @@
 #include "../Funcs/Funcs.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/Smearing.h"
+#include "../Funcs/PlotSetup.h"
 #include "TLorentzVector.h"
 
 void BiasVariancePlots(){
+
+  PlotSetup();
 
   bool draw_smeared = true;
   bool rebin = false;
@@ -101,24 +104,6 @@ void BiasVariancePlots(){
 
   gSystem->Exec("mkdir -p Plots/BiasVariancePlots/");
 
-  TCanvas* c = new TCanvas("c","c",800,600);
-  TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
-  TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
-  p_legend->SetBottomMargin(0);
-  p_legend->SetTopMargin(0.1);
-  p_plot->SetTopMargin(0.01);
-
-  TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
-  l->SetBorderSize(0);
-  l->SetNColumns(5);
-  
-  p_legend->Draw();
-  p_legend->cd();
-  l->Draw();
-  c->cd();
-  p_plot->Draw();
-  p_plot->cd();
-
   // First calculate the 1D bias/variance plots
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -175,15 +160,17 @@ void BiasVariancePlots(){
 
     p_plot->cd();
     hs_Bias->Draw("nostack HIST");
-    p_legend->cd();
-    l->Draw();
+    SetAxisFonts(hs_Bias);
+    hs_Bias->SetMinimum(-0.2);
+    hs_Bias->SetMaximum(0.02);
     c->Print(("Plots/Bias_Energy_"+gen+".pdf").c_str());  
     p_plot->Clear();
 
     p_plot->cd();
     hs_Variance->Draw("nostack HIST");
-    p_legend->cd();
-    l->Draw();
+    SetAxisFonts(hs_Variance);
+    hs_Variance->SetMinimum(0.0);
+    hs_Variance->SetMaximum(0.12);
     c->Print(("Plots/Variance_Energy_"+gen+".pdf").c_str());  
     p_plot->Clear();
 
@@ -256,10 +243,9 @@ void BiasVariancePlots(){
 
     p_plot->cd();
     hs_Bias->Draw("nostack HIST");
+    SetAxisFonts(hs_Bias);
     hs_Bias->SetMaximum(high);
     hs_Bias->SetMinimum(low);
-    p_legend->cd();
-    //l->Draw();
     c->Print(("Plots/Bias_Bands_"+est+".pdf").c_str()); 
     p_plot->Clear();
     l->Clear();
@@ -280,10 +266,9 @@ void BiasVariancePlots(){
 
   p_plot->cd();
   hs_Width->Draw("nostack HIST");
-  //l->Draw();
+  SetAxisFonts(hs_Width);
   c->Print("Plots/Bias_Bands_Widths.pdf"); 
   p_plot->Clear();
   l->Clear(); 
-
 
 }

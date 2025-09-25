@@ -2,6 +2,7 @@
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
 #include "../Funcs/Smearing.h"
+#include "../Funcs/PlotSetup.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
 
@@ -12,6 +13,8 @@ double fid_mass = 1; // active mass in KT
 double POT = 1; // POT in 10^21
 
 void NuMuRates(){
+
+  PlotSetup();
 
   bool make_smear_plots = true;
 
@@ -86,7 +89,7 @@ void NuMuRates(){
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
       //if(ievent > 10000) break;
-      if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
+      if(ievent % 50000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
       osc_model.SetDeltaMSq23(c_osc::deltamsq23);
