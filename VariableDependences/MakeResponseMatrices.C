@@ -4,7 +4,7 @@
 
 void MakeResponseMatrices(){
 
-  bool nue_mode = false;
+  bool nue_mode = true;
 
   std::vector<std::string> InputFiles_v;
   if(!nue_mode) InputFiles_v = {"GENIEEventsFiltered.root","NuWroEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root"};

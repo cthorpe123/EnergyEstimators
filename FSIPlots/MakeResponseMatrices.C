@@ -2,6 +2,8 @@
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/OscFitter.h"
 
+bool nue_mode = false;
+
 void MakeResponseMatrices(){
 
   gSystem->Exec("mkdir -p Plots/DeltaM2Plots/");
@@ -9,6 +11,7 @@ void MakeResponseMatrices(){
   TLegend* l = new TLegend(0.75,0.75,0.95,0.95);
 
   std::vector<std::string> InputFiles_v = {"GENIEEvents2.root","NuWroEvents2.root"};
+  if(nue_mode) InputFiles_v = {"GENIENueEvents2.root","NuWroNueEvents2.root"};
   std::vector<std::string> Generators_v = {"GENIE","NuWro"};
 
   // First make the response matrices
@@ -53,6 +56,9 @@ void MakeResponseMatrices(){
       h_TrueEnergy_RecoEnergy_NoFSI.at(i_e).back()->SetDirectory(0);
     }
 
+    int target_pdg = 14;
+    if(nue_mode) target_pdg = 12;
+
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
       //if(ievent > 200000) break;
@@ -61,7 +67,7 @@ void MakeResponseMatrices(){
 
       if(generator != "GiBUU") weight = 1.0;
 
-      if(nu_pdg != 14 || ccnc != 1) continue;
+      if(nu_pdg != target_pdg || ccnc != 1) continue;
 
       std::vector<double> energies = GetEnergyEst(lepton_p4,pdg,p4);
       std::vector<double> energies_nofsi = GetEnergyEst(lepton_p4,pdg_nofsi,p4_nofsi);
@@ -84,7 +90,8 @@ void MakeResponseMatrices(){
 
   }
 
-  TFile* f_out = new TFile("ResponseMatricesNuMu.root","RECREATE");
+  std::string filename = nue_mode ? "ResponseMatricesNue.root" : "ResponseMatricesNuMu.root";
+  TFile* f_out = new TFile(filename.c_str(),"RECREATE");
   for(size_t i_e=0;i_e<kMAX;i_e++){
     for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
       h_TrueEnergy_RecoEnergy.at(i_e).at(i_f)->Write();

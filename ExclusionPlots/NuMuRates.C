@@ -16,7 +16,7 @@ void NuMuRates(){
 
   PlotSetup();
 
-  bool make_smear_plots = true;
+  bool make_smear_plots = false;
 
   // Load the numu flux histogram
   TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
@@ -108,9 +108,11 @@ void NuMuRates(){
 
       int nprot = GetNProt(pdg,p4);
       double W = CalcW(pdg,p4);
-      if(nprot < 1) continue;
+      if(lepton_p4->Vect().Mag() < 0.1) continue;
 
-      std::vector<double> energies =  GetEnergyEst(lepton_p4,pdg,p4);
+      //if(nprot < 1) continue;
+
+      std::vector<double> energies = GetEnergyEst(lepton_p4,pdg,p4);
 
       // Calculate predictions with kinematic smearing 
       std::vector<double> energies_smeared;

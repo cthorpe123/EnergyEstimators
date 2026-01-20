@@ -4,8 +4,8 @@
 
 const double _EPSILON_ = 0.01;
 
-const std::string generator = "GiBUU";
-const int target_nu_pdg = 14;
+const std::string generator = "GiBUU_Nue";
+const int target_nu_pdg = 12;
 
 void Filter(){
 
@@ -45,7 +45,7 @@ void Filter(){
     if(ievent % 50000 == 0) std::cout << "Event " << ievent << "/" << t_in->GetEntries() << std::endl;
 
     if(abs(nu_pdg) != target_nu_pdg || ccnc != 1) continue;
-    if(GetNProt(pdg,p4) < 1) continue;
+    //if(GetNProt(pdg,p4) < 1) continue;
 
     bool bad_event = false;
     for(size_t i_p=0;i_p<pdg->size();i_p++){

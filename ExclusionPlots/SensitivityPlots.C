@@ -19,7 +19,7 @@ void SensitivityPlots(){
 
   PlotSetup();
 
-  bool make_smear_plots = true;
+  bool make_smear_plots = false;
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
@@ -98,14 +98,14 @@ void SensitivityPlots(){
 
       double deltam2_chi2_plus=0.0,deltam2_chi2_minus=0.0; 
       for(int i=1;i<h_deltam2_cv->GetNbinsX()+1;i++){
-        deltam2_chi2_plus += pow((h_deltam2_plus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_plus->GetBinError(i),2); 
-        deltam2_chi2_minus += pow((h_deltam2_minus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_minus->GetBinError(i),2); 
+        if(h_deltam2_plus->GetBinError(i) > 0) deltam2_chi2_plus += pow((h_deltam2_plus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_plus->GetBinError(i),2); 
+        if(h_deltam2_minus->GetBinError(i) > 0) deltam2_chi2_minus += pow((h_deltam2_minus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_minus->GetBinError(i),2); 
       }
 
       double deltacp_chi2_plus=0.0,deltacp_chi2_minus=0.0; 
       for(int i=1;i<h_deltacp_cv->GetNbinsX()+1;i++){
-        deltacp_chi2_plus += pow((h_deltacp_plus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_plus->GetBinError(i),2); 
-        deltacp_chi2_minus += pow((h_deltacp_minus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_minus->GetBinError(i),2); 
+        if(h_deltacp_plus->GetBinError(i) > 0) deltacp_chi2_plus += pow((h_deltacp_plus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_plus->GetBinError(i),2); 
+        if(h_deltacp_minus->GetBinError(i) > 0)deltacp_chi2_minus += pow((h_deltacp_minus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_minus->GetBinError(i),2); 
       }
 
       std::cout << "DeltaCP Plus: " << sqrt(deltacp_chi2_plus) << " Minus: " << sqrt(deltacp_chi2_minus) << std::endl;
@@ -147,7 +147,7 @@ void SensitivityPlots(){
   h_axes->Draw("HIST");
   SetAxisFontsH(h_axes); 
   h_axes->SetMinimum(0.45);
-  h_axes->SetMaximum(1.25);
+  h_axes->SetMaximum(1.3);
   h_axes->SetStats(0);
   for(int i_e=0;i_e<kMAX;i_e++) h_axes->GetXaxis()->SetBinLabel(i_e+1,estimators_leg.at(i_e).c_str());
   h_axes->GetXaxis()->SetLabelOffset(0.01);

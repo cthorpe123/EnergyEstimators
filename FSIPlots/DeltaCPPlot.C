@@ -8,12 +8,12 @@ OscModel fit_osc_model;
 
 bool makeloadsofplots = true;
 
-void DeltaM2Plot(){
+void DeltaCPPlot(){
 
   PlotSetup(); 
 
   // Load the histograms
-  TFile* f = TFile::Open("ResponseMatricesNuMu.root");
+  TFile* f = TFile::Open("ResponseMatricesNue.root");
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro"};
 
@@ -32,18 +32,15 @@ void DeltaM2Plot(){
 
     std::vector<TH1D*> h_fit_results(estimators_str.size());
     for(size_t i_e=0;i_e<estimators_str.size();i_e++)
-      h_fit_results.at(i_e) = new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+gen).c_str(),";Input #Delta m^{2}_{23};Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}",100,0.9*c_osc::deltamsq23,1.1*c_osc::deltamsq23);
+      h_fit_results.at(i_e) = new TH1D(("h_fit_results_"+estimators_str.at(i_e)+"_"+gen).c_str(),";Input #delta_{CP} (rad);Measured #delta_{CP} - Input #delta_{CP} (rad)",20,-3.14/4,3.14/4);
 
-    double true_theta13 = c_osc::theta13;
-    double true_theta23 = c_osc::theta23;
-
-    double min_fit_ratio = 1;
-    double max_fit_ratio = 1;
+    double min_fit_ratio = 0;
+    double max_fit_ratio = 0;
 
     for(int i_dm=1;i_dm<h_fit_results.back()->GetNbinsX()+1;i_dm++){
 
-      double true_deltamsq23 = h_fit_results.back()->GetBinCenter(i_dm);
-      data_osc_model.SetDeltaMSq23(true_deltamsq23);
+      double true_deltaCP = h_fit_results.back()->GetBinCenter(i_dm);
+      data_osc_model.SetDeltaCP(true_deltaCP);
 
       for(size_t i_e=0;i_e<estimators_str.size();i_e++){
 
@@ -70,7 +67,7 @@ void DeltaM2Plot(){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_data_true_reco->GetXaxis()->GetBinCenter(i);
             if(E > 5.0 || E < 0.8) continue;
-            events += data_osc_model.NuMuSurvProb(E)*h_data_true_reco->GetBinContent(i,j)*flux;
+            events += data_osc_model.NueAppProb(E)*h_data_true_reco->GetBinContent(i,j)*flux;
           }
           h_data_reco->SetBinContent(j,events);
         }
@@ -79,7 +76,7 @@ void DeltaM2Plot(){
 
         std::cout << "Fitting " << estimators_str.at(i_e) << " " << gen << std::endl;
 
-        double meas_deltamsq23 = 0; 
+        double meas_deltaCP = 0; 
         TH1D* h_model_reco = new TH1D("h_model_reco","",nbins,low,high);
         TH1D* h_model_reco_prefit = new TH1D("h_model_reco_prefit","",nbins,low,high);
 
@@ -90,10 +87,74 @@ void DeltaM2Plot(){
             double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
             double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
             if(E > 5.0 || E < 0.8) continue;
-            events += data_osc_model.NuMuSurvProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
+            events += data_osc_model.NueAppProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
           }
           h_model_reco_prefit->SetBinContent(j,events);
         }
+
+
+
+
+
+
+        // Set the function to be minimised in the fit
+        ROOT::Math::Functor min = ROOT::Math::Functor( [&] (const double *coeff){
+
+            fit_osc_model.SetDeltaCP(coeff[1]);
+            //fit_osc_model.SetDeltaMSq13(coeff[2]);
+            //fit_osc_model.SetTheta13(coeff[2]);
+
+            // Calculate the oscillated prediction
+            for(int j=1;j<nbins+1;j++){
+            double events = 0.0;
+            for(int i=1;i<h_model_true_reco->GetNbinsX()+1;i++){
+            if(h_model_true_reco->GetXaxis()->GetBinCenter(i) < 0.8 || h_model_true_reco->GetXaxis()->GetBinCenter(i) > 5.0) continue;
+            double flux = h_flux->GetBinContent(h_flux->FindBin(h_data_true_reco->GetXaxis()->GetBinCenter(i)));
+            double E = h_model_true_reco->GetXaxis()->GetBinCenter(i);
+            events += fit_osc_model.NueAppProb(E)*h_model_true_reco->GetBinContent(i,j)*flux;
+            }
+            h_model_reco->SetBinContent(j,events);
+            }
+
+            h_model_reco->Scale(coeff[0]);
+
+            double chi2 = 0.0;
+            for(int j=1;j<nbins+1;j++){
+              if(h_data_reco->GetBinContent(j) > 0)
+                chi2 += pow((h_model_reco->GetBinContent(j) - h_data_reco->GetBinContent(j))/sqrt(h_data_reco->GetBinContent(j)),2);         
+            }
+
+            //std::cout << coeff[0] << " " << coeff[1] << " chi2/nbins=" << chi2/nbins << std::endl;
+
+            return chi2/nbins*1000000;
+
+        }, 2);
+
+        std::unique_ptr< ROOT::Math::Minimizer > fMinimizer = std::unique_ptr<ROOT::Math::Minimizer>
+          ( ROOT::Math::Factory::CreateMinimizer( "Minuit2", "Migrad" ) );
+
+        fMinimizer->SetMaxFunctionCalls(5000);
+
+        fMinimizer->SetVariable(0,"scale",1.0,0.1);
+        fMinimizer->SetVariable(1,"deltaCP",meas_deltaCP,0.01);
+        //fMinimizer->SetVariable(2,"deltamsq13",c_osc::deltamsq13,0.01*c_osc::deltamsq13);
+        //fMinimizer->SetVariable(2,"theta13",c_osc::theta13,0.01);
+
+        double limit_low = true_deltaCP-3.14/4;
+        double limit_up = true_deltaCP+3.14/4;
+
+        fMinimizer->SetVariableLimits(1,limit_low,limit_up);
+
+        fMinimizer->SetFunction(min);
+        fMinimizer->Minimize();
+
+        meas_deltaCP = fMinimizer->X()[1];
+
+        //if(abs(meas_deltaCP - limit_low) < 1e-5 || abs(meas_deltaCP - limit_up) < 1e-5) return false;
+        //else return true;
+
+
+/*
 
         // Set the function to be minimised in the fit
         ROOT::Math::Functor min = ROOT::Math::Functor( [&] (const double *coeff){
@@ -133,6 +194,13 @@ void DeltaM2Plot(){
         fMinimizer->Minimize();
 
         meas_deltamsq23 = fMinimizer->X()[0];
+*/
+
+
+
+
+
+
 
         if(makeloadsofplots){
           gSystem->Exec(("mkdir -p Plots/FitPlots/"+gen+"/"+estimators_str.at(i_e)).c_str());
@@ -150,15 +218,15 @@ void DeltaM2Plot(){
           l->AddEntry(h_data_reco,(gen+" FD").c_str(),"L");
           l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
           l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
-          l->AddEntry((TObject*)0,("Input #Delta m^{2}="+std::to_string(true_deltamsq23)+" Measured #Delta m^{2}="+std::to_string(meas_deltamsq23)).c_str(),"");
+          l->AddEntry((TObject*)0,("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str(),"");
           c->Print(("Plots/FitPlots/"+gen+"/"+estimators_str.at(i_e)+"/Point_" + std::to_string(i_dm) + "_" + gen + "_" + estimators_str.at(i_e) +".pdf").c_str());
           p_plot->Clear();
           l->Clear();
         } 
 
-        h_fit_results.at(i_e)->SetBinContent(i_dm,meas_deltamsq23/true_deltamsq23);
-        min_fit_ratio = std::min(min_fit_ratio,meas_deltamsq23/true_deltamsq23);
-        max_fit_ratio = std::max(max_fit_ratio,meas_deltamsq23/true_deltamsq23);
+        h_fit_results.at(i_e)->SetBinContent(i_dm,meas_deltaCP-true_deltaCP);
+        min_fit_ratio = std::min(min_fit_ratio,meas_deltaCP - true_deltaCP);
+        max_fit_ratio = std::max(max_fit_ratio,meas_deltaCP - true_deltaCP);
 
         delete h_data_reco;
         delete h_model_reco;
@@ -167,12 +235,12 @@ void DeltaM2Plot(){
       }
     }
 
-    TF1* f_line = new TF1("f_line","1",-1000,1000);
+    TF1* f_line = new TF1("f_line","0",-1000,1000);
     f_line->SetLineColor(1);  
     f_line->SetLineWidth(2);
     f_line->SetLineStyle(9);
 
-    THStack* hs = new THStack("hs",";Input #Delta m^{2}_{23} (eV^{2});Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}");     
+    THStack* hs = new THStack("hs",";Input #delta_{CP} (rad) ;Measured #delta_{CP} - Input #delta_{CP} (rad)");     
 
     for(size_t i_e=0;i_e<estimators_str.size();i_e++){
       if(i_e == kMuonKin) continue;
@@ -188,7 +256,7 @@ void DeltaM2Plot(){
     f_line->Draw("L same");
     hs->GetXaxis()->SetNdivisions(6);
     SetAxisFonts(hs);
-    c->Print(("Plots/DeltaM2FitResults_"+gen+".pdf").c_str());
+    c->Print(("Plots/DeltaCPFitResults_"+gen+".pdf").c_str());
     p_plot->Clear();
     l->Clear();
 

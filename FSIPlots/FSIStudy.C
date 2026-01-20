@@ -164,9 +164,11 @@ void FSIStudy(){
       hs_Bias->Add(h_Bias.back());
       l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L"); 
 
-      h_Variance.back()->SetLineWidth(2);
-      h_Variance.back()->SetLineColor(colors.at(i_e));
-      hs_Variance->Add(h_Variance.back());
+      if(i_e != kMuonKin){
+        h_Variance.back()->SetLineWidth(2);
+        h_Variance.back()->SetLineColor(colors.at(i_e));
+        hs_Variance->Add(h_Variance.back());
+      }
 
       TH2D* h_nofsi = h_TrueEnergy_RecoEnergy_NoFSI.at(i_e).at(i_f); 
       h_Bias.push_back(new TH1D(("h_Bias_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a));
@@ -175,20 +177,30 @@ void FSIStudy(){
 
       h_Bias.back()->SetLineWidth(2);
       h_Bias.back()->SetLineColor(colors.at(i_e));
-      h_Bias.back()->SetLineStyle(2);
+      h_Bias.back()->SetLineStyle(9);
       hs_Bias->Add(h_Bias.back());
 
-      h_Variance.back()->SetLineWidth(2);
-      h_Variance.back()->SetLineColor(colors.at(i_e));
-      h_Variance.back()->SetLineStyle(2);
-      hs_Variance->Add(h_Variance.back());
+      if(i_e != kMuonKin){
+        h_Variance.back()->SetLineWidth(2);
+        h_Variance.back()->SetLineColor(colors.at(i_e));
+        h_Variance.back()->SetLineStyle(9);
+        hs_Variance->Add(h_Variance.back());
+      }
 
     }
 
     hs_Bias->Draw("HIST nostack");
     SetAxisFonts(hs_Bias);
+    hs_Bias->SetMinimum(-0.35);
+    hs_Bias->SetMaximum(0.055);
     c->Print(("Plots/Bias_"+gen+".pdf").c_str());
     p_plot->Clear();
+
+    // Reset the legend and regenerate without the CCQE like
+    l->Clear();
+    for(size_t i_e=0;i_e<kMAX;i_e++)
+      if(i_e != kMuonKin) l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L"); 
+     
 
     hs_Variance->Draw("HIST nostack");
     SetAxisFonts(hs_Variance);
@@ -199,8 +211,47 @@ void FSIStudy(){
     delete hs_Bias;
     delete hs_Variance;       
 
+
+     // Calculate the change in bias/variance when switching off FSI 
+    THStack* hs_Bias_Change = new THStack(("hs_Bias_Change_"+gen).c_str(),";True Neutrino Energy (GeV);Change in Frac. Bias");
+    THStack* hs_Variance_Change = new THStack(("hs_Variance_Change_"+gen).c_str(),";True Neutrino Energy (GeV);Change Frac. Variance");
+
+    for(size_t i_e=0;i_e<kMAX;i_e++){
+
+      std::string est = estimators_str.at(i_e);
+
+      TH1D* h_bias = h_Bias.at(2*i_e);
+      TH1D* h_bias_nofsi = h_Bias.at(2*i_e+1);
+      h_bias->Add(h_bias_nofsi,-1);
+      hs_Bias_Change->Add(h_bias);
+      l->AddEntry(h_bias,estimators_leg.at(i_e).c_str(),"L"); 
+
+      TH1D* h_variance = h_Variance.at(2*i_e);
+      TH1D* h_variance_nofsi = h_Variance.at(2*i_e+1);
+      h_variance->Add(h_variance_nofsi,-1);
+      hs_Variance_Change->Add(h_variance);
+
+    }
+
+    hs_Bias_Change->Draw("HIST nostack");
+    SetAxisFonts(hs_Bias_Change);
+    hs_Bias_Change->SetMinimum(-0.1);
+    hs_Bias_Change->SetMaximum(0.022);
+    c->Print(("Plots/Bias_Change_"+gen+".pdf").c_str());
+    p_plot->Clear();
+
+    hs_Variance_Change->Draw("HIST nostack");
+    SetAxisFonts(hs_Variance_Change);
+    c->Print(("Plots/Variance_Change_"+gen+".pdf").c_str());
+    p_plot->Clear();
+
+
+    delete hs_Bias_Change;
+    delete hs_Variance_Change;
+
     h_Bias.clear();
     h_Variance.clear();
+    l->Clear();
 
   }
 
@@ -374,7 +425,7 @@ void FSIStudy(){
 
       h_nofsi_v.at(i_f)->SetLineWidth(2);
       h_nofsi_v.at(i_f)->SetLineColor(i_f+1);
-      h_nofsi_v.at(i_f)->SetLineStyle(2);
+      h_nofsi_v.at(i_f)->SetLineStyle(9);
 
       hs->Add(h_v.at(i_f));
       hs->Add(h_nofsi_v.at(i_f));

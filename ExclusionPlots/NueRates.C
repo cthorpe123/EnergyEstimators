@@ -53,7 +53,7 @@ void NueRates(){
     h_RecoEnergy_Smeared_DeltaCP_Plus.push_back(std::vector<TH1D*>());
     h_RecoEnergy_Smeared_DeltaCP_Minus.push_back(std::vector<TH1D*>());
 
-    int nbins = 100;
+    int nbins = 200;
     for(std::string estimator : estimators_str){
       h_RecoEnergy_DeltaCP_CV.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaCP_CV_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
       h_RecoEnergy_DeltaCP_Plus.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaCP_Plus_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
@@ -108,7 +108,8 @@ void NueRates(){
 
       int nprot = GetNProt(pdg,p4);
       double W = CalcW(pdg,p4);
-      if(nprot < 1) continue;
+      //if(nprot < 1) continue;
+      if(lepton_p4->Vect().Mag() < 0.1) continue;
 
       std::vector<double> energies =  GetEnergyEst(lepton_p4,pdg,p4);
 

@@ -126,7 +126,7 @@ void VariableDependences(){
       //if(gen == "GiBUU" && weight > 1) continue;
 
       if(nu_pdg != 14 || ccnc != 1) continue;
-      if(nprot < 1) continue;
+      //if(nprot < 1) continue;
 
       double angle = acos(lepton_p4->CosTheta());
       double missing_e = GetMissingEnergy(pdg,p4); 
@@ -204,7 +204,7 @@ void VariableDependences(){
 
       hs_Variance->Draw("nostack HIST");
       SetAxisFonts(hs_Variance);
-      hs_Variance->SetMaximum(0.3);
+      hs_Variance->SetMaximum(0.27);
       hs_Variance->SetMinimum(0);
       c->Print(("Plots/"+var+"/Variance_"+gen+".pdf").c_str());  
       p_plot->Clear();
@@ -220,7 +220,7 @@ void VariableDependences(){
     std::string axis_title = axis_titles.at(i_v);
     std::string var = vars.at(i_v);
 
-    THStack* hs = new THStack(("hs_"+var).c_str(),(";"+axis_title+";Events").c_str());
+    THStack* hs = new THStack(("hs_"+var).c_str(),(";"+axis_title+";Probability Density").c_str());
 
     for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 

@@ -96,7 +96,7 @@ void DeltaM2Plot(){
 
   PlotSetup(); 
 
-  c->SetCanvasSize(800,450);
+  c->SetCanvasSize(800,420);
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
@@ -107,7 +107,7 @@ void DeltaM2Plot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  std::string var = "Neutrons";
+  std::string var = "W";
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 

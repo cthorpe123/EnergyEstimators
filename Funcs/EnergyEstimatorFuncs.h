@@ -177,7 +177,7 @@ double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot
 
   switch(est){
     case kMuonKin: return T2KEnergy(plepton);
-    case kMuonKinWNP: if(nprot > 0) return ubooneEnergy(plepton,W,nprot); else return -1;
+    case kMuonKinWNP: if(pprotons.size()) return ubooneEnergy(plepton,std::max(W,Mp),std::max(1,nprot)); else return -1;
     case kPeLEELike0Pi: if(!ppions.size() && !ppizeros.size()) return peleeEnergy(plepton,pprotons); else return -1;
     case kTotalEDep: return totaledepEnergy(plepton,pprotons,ppions,ppizeros);
     case kSFMethod: if(pprotons.size() == 1 && !ppions.size() && !ppizeros.size()) return sfmethodEnergy(plepton,pprotons); else return -1;

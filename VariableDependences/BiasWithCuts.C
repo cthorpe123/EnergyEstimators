@@ -7,11 +7,11 @@ void BiasWithCuts(){
 
   PlotSetup(); 
 
-  std::vector<std::string> Generators_v = {"GENIE"/*,"NuWro","NEUT","GiBUU"*/};
+  std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
   std::vector<std::string> vars = {"W","Angle","MissingE","Neutrons"};
-  std::vector<std::string> x_axis_titles = {"W_{cut} (GeV)","#theta_{cut}","E^{miss}_{cut} (GeV)","N_{cut}"};
-  std::vector<std::string> y_axis_titles = {"B'(W_{cut}) - B","B'(#theta_{cut}) - B","B'(E^{miss}_{cut}) - B","B'(N_{cut}) - B",};
+  std::vector<std::string> x_axis_titles = {"W_{vis} (GeV)","#theta (rad)","Missing Hadronic Energy (GeV)","N"};
+  std::vector<std::string> y_axis_titles = {"B' - B","B' - B","B' - B","B' - B",};
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 

@@ -63,7 +63,7 @@ void Efficiencies(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      if(ievent > 50000) break;
+      //if(ievent > 50000) break;
       if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -107,13 +107,13 @@ void Efficiencies(){
     h_TrueEnergy_Np0pi.at(i_f)->SetLineWidth(2);
     h_TrueEnergy_Np0pi.at(i_f)->SetLineColor(3);
     hs->Add(h_TrueEnergy_Np0pi.at(i_f));
-    l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0pi","L");
+    l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0#pi","L");
 
     h_TrueEnergy_1p0pi.at(i_f)->Divide(h_TrueEnergy.at(i_f));
     h_TrueEnergy_1p0pi.at(i_f)->SetLineWidth(2);
     h_TrueEnergy_1p0pi.at(i_f)->SetLineColor(4);
     hs->Add(h_TrueEnergy_1p0pi.at(i_f));
-    l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0pi","L");
+    l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0#pi","L");
 
     p_plot->cd();
     hs->Draw("HIST nostack");
@@ -141,14 +141,14 @@ void Efficiencies(){
     h_TrueEnergy_Np.at(i_f)->SetLineStyle(1); 
     h_TrueEnergy_Np0pi.at(i_f)->SetLineStyle(2); 
     h_TrueEnergy_1p0pi.at(i_f)->SetLineStyle(3); 
-    l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0pi","L"); 
+    l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0#pi","L"); 
   }
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
     hs_all->Add(h_TrueEnergy_Np.at(i_f));
     hs_all->Add(h_TrueEnergy_Np0pi.at(i_f));
     hs_all->Add(h_TrueEnergy_1p0pi.at(i_f));
-    l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0pi","L"); 
+    l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0#pi","L"); 
   }
  
   p_plot->cd(); 

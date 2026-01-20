@@ -30,7 +30,7 @@ void BiasVariancePlots(){
   double* reco_binning_a = &reco_binning_v[0];
 
   std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy(kMAX,std::vector<TH2D*>());
-  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_Smeared(kMAX,std::vector<TH2D*>());
+  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_Smeared(kMAX+1,std::vector<TH2D*>());
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -41,6 +41,8 @@ void BiasVariancePlots(){
       h_TrueEnergy_RecoEnergy.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"",true_nbins,true_binning_a,200,0.0,10.0));
       h_TrueEnergy_RecoEnergy_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared_"+estimator).c_str(),"",true_nbins,true_binning_a,200,0.0,10.0));
     }
+    h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared2_TotalEDep").c_str(),"",true_nbins,true_binning_a,200,0.0,10.0));
+
 
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
@@ -75,10 +77,11 @@ void BiasVariancePlots(){
       if(nu_pdg != 14 || ccnc != 1) continue;
 
       if(nu_e > 8) continue;
+      if(lepton_p4->Vect().Mag() < 0.1) continue; 
 
       int nprot = GetNProt(pdg,p4);
       double W = CalcW(pdg,p4);
-      if(nprot < 1) continue;
+      //if(nprot < 1) continue;
 
       std::vector<double> energies =  GetEnergyEst(lepton_p4,pdg,p4);
 
@@ -88,7 +91,7 @@ void BiasVariancePlots(){
       int nprot_smeared = GetNProt(pdg,p4);
       double W_smeared = CalcW(pdg,p4);
       std::vector<double> energies_smeared = GetEnergyEst(lepton_p4,pdg,p4);
-      energies_smeared.at(kTotalEDep) = energies.at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0));
+      //energies_smeared.at(kTotalEDep) = energies.at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0));
 
       for(int i_e=0;i_e<kMAX;i_e++){
         double nu_e_reco = energies.at(i_e);
@@ -96,6 +99,9 @@ void BiasVariancePlots(){
         h_TrueEnergy_RecoEnergy.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco,weight);  
         h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_smeared,weight);  
       }
+
+      // Flat 20% smearing on energy
+      h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).at(i_f)->Fill(nu_e,energies.at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0)),weight);  
 
     }
 
@@ -136,18 +142,18 @@ void BiasVariancePlots(){
       if(draw_smeared){
         h_Bias_Smeared.back()->SetLineColor(colors.at(i_e));
         h_Bias_Smeared.back()->SetLineWidth(2);
-        h_Bias_Smeared.back()->SetLineStyle(2);
-        hs_Bias->Add(h_Bias_Smeared.back());
+        //h_Bias_Smeared.back()->SetLineStyle(2);
+        //hs_Bias->Add(h_Bias_Smeared.back());
       }
 
       h_Variance.back()->SetLineColor(colors.at(i_e));
       h_Variance.back()->SetLineWidth(2);
-      hs_Variance->Add(h_Variance.back());
+      //hs_Variance->Add(h_Variance.back());
 
       if(draw_smeared){
         h_Variance_Smeared.back()->SetLineColor(colors.at(i_e));
         h_Variance_Smeared.back()->SetLineWidth(2);
-        h_Variance_Smeared.back()->SetLineStyle(2);
+        //h_Variance_Smeared.back()->SetLineStyle(2);
         hs_Variance->Add(h_Variance_Smeared.back());
       }
 
@@ -157,6 +163,15 @@ void BiasVariancePlots(){
       delete h_smeared;
 
     } 
+
+    // Make the variance plot with the 20% smearing
+    h_Bias_Smeared.push_back(new TH1D(("h_Bias_Smeared2_"+gen+"_TotalEDep").c_str(),"",true_nbins,true_binning_a));
+    h_Variance_Smeared.push_back(new TH1D(("h_Variance_Smeared2_"+gen+"_TotalEDep").c_str(),"",true_nbins,true_binning_a));
+    GetBiasVariance(h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).at(i_f),h_Bias_Smeared.back(),h_Variance_Smeared.back()); 
+    h_Variance_Smeared.back()->SetLineColor(colors.at(kTotalEDep));
+    h_Variance_Smeared.back()->SetLineWidth(2);
+    h_Variance_Smeared.back()->SetLineStyle(2);
+    hs_Variance->Add(h_Variance_Smeared.back());
 
     p_plot->cd();
     hs_Bias->Draw("nostack HIST");
@@ -170,43 +185,51 @@ void BiasVariancePlots(){
     hs_Variance->Draw("nostack HIST");
     SetAxisFonts(hs_Variance);
     hs_Variance->SetMinimum(0.0);
-    hs_Variance->SetMaximum(0.12);
+    hs_Variance->SetMaximum(0.19);
     c->Print(("Plots/Variance_Energy_"+gen+".pdf").c_str());  
     p_plot->Clear();
 
     l->Clear();
 
+    delete hs_Bias;
+    delete hs_Variance;
+
+    // Calculate the increase in variance between the not smeared and smeared calculations
+    // First calculate the 1D bias/variance plots
+
+    THStack* hs_Variance2 = new THStack(("hs_Variance2"+gen).c_str(),";True Neutrino Energy (GeV);Increase in Frac. Variance");
+
+    for(size_t i_e=0;i_e<kMAX;i_e++){
+      std::string est = estimators_str.at(i_e);
+      h_Variance_Smeared.at(i_e)->Add(h_Variance.at(i_e),-1); 
+      hs_Variance2->Add(h_Variance_Smeared.at(i_e));
+      l->AddEntry(h_Variance_Smeared.at(i_e),estimators_leg.at(i_e).c_str(),"L");
+    }
+
+    h_Variance_Smeared.at(kMAX)->Add(h_Variance.at(kTotalEDep),-1); 
+    hs_Variance2->Add(h_Variance_Smeared.at(kMAX));
+    //l->AddEntry(h_Variance_Smeared.back(),estimators_leg.at(i_e).c_str(),"L");
+
+    p_plot->cd();
+    hs_Variance2->Draw("nostack HIST");
+    SetAxisFonts(hs_Variance);
+    c->Print(("Plots/Variance_Energy_Increase_"+gen+".pdf").c_str());    
+    p_plot->Clear();
+    l->Clear();
+
+    delete hs_Variance2;
+
   }
 
-
-  // Calculate the difference in bias between the difference generators - calculate spread  
-  std::vector<TH1D*> h_band_low(kMAX);
-  std::vector<TH1D*> h_band_high(kMAX);
-  std::vector<TH1D*> h_band_width(kMAX);
-
-  double low = -0.45;
-  double high = 0.05;
-
+  // Compare bias and variance between generators
   for(size_t i_e=0;i_e<kMAX;i_e++){
 
     std::string est = estimators_str.at(i_e);
 
-    h_band_low.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0)->ProjectionX(("band_low_"+est).c_str()); 
-    h_band_high.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0)->ProjectionX(("band_high_"+est).c_str()); 
-    h_band_width.at(i_e) = h_TrueEnergy_RecoEnergy.at(i_e).at(0)->ProjectionX(("band_width_"+est).c_str()); 
-    if(rebin){
-      h_band_low.at(i_e)->Rebin();
-      h_band_high.at(i_e)->Rebin();
-      h_band_width.at(i_e)->Rebin();
-    }
-
-    for(int i=1;i<h_band_low.at(i_e)->GetNbinsX()+1;i++){
-      h_band_low.at(i_e)->SetBinContent(i,10);
-      h_band_high.at(i_e)->SetBinContent(i,-10);
-    }
-
     THStack* hs_Bias = new THStack(("hs_Bias_"+est).c_str(),";True Neutrino Energy (GeV);Frac. Bias");
+    THStack* hs_Variance = new THStack(("hs_Variance_"+est).c_str(),";True Neutrino Energy (GeV);Frac. Variance");
     std::vector<TH1D*> h_bias(InputFiles_v.size());
+    std::vector<TH1D*> h_variance(InputFiles_v.size());
 
     for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -214,24 +237,8 @@ void BiasVariancePlots(){
 
       TH2D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f);
       h_bias.at(i_f) = new TH1D(("h_Bias2_"+gen+"_"+est).c_str(),"",true_nbins,true_binning_a);
-      TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",true_nbins,true_binning_a);
-      GetBiasVariance(h,h_bias.at(i_f),h_variance); 
-
-      if(rebin){
-        h_bias.at(i_f)->Rebin();
-        h_variance->Rebin();
-        h_bias.at(i_f)->Scale(0.5); //rebinning will multiply contents of bins by 2
-        h_variance->Scale(0.5);
-      }
-
-      for(int i=1;i<h_bias.at(i_f)->GetNbinsX()+1;i++){
-        h_band_low.at(i_e)->SetBinContent(i,std::min(h_band_low.at(i_e)->GetBinContent(i),h_bias.at(i_f)->GetBinContent(i)));
-        h_band_high.at(i_e)->SetBinContent(i,std::max(h_band_high.at(i_e)->GetBinContent(i),h_bias.at(i_f)->GetBinContent(i)));
-        h_band_width.at(i_e)->SetBinContent(i,h_band_high.at(i_e)->GetBinContent(i) - h_band_low.at(i_e)->GetBinContent(i));
-      }
-
-      //delete h;
-      delete h_variance;
+      h_variance.at(i_f) = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",true_nbins,true_binning_a);
+      GetBiasVariance(h,h_bias.at(i_f),h_variance.at(i_f)); 
 
       h_bias.at(i_f)->SetLineColor(colors.at(i_e));
       h_bias.at(i_f)->SetLineStyle(i_f+1);
@@ -239,36 +246,31 @@ void BiasVariancePlots(){
       hs_Bias->Add(h_bias.at(i_f));
       l->AddEntry(h_bias.at(i_f),gen.c_str(),"L");
 
+      h_variance.at(i_f)->SetLineColor(colors.at(i_e));
+      h_variance.at(i_f)->SetLineStyle(i_f+1);
+      h_variance.at(i_f)->SetLineWidth(2);
+      hs_Variance->Add(h_variance.at(i_f));
+
     } 
 
     p_plot->cd();
     hs_Bias->Draw("nostack HIST");
     SetAxisFonts(hs_Bias);
-    hs_Bias->SetMaximum(high);
-    hs_Bias->SetMinimum(low);
+    hs_Bias->SetMaximum(0.02);
+    hs_Bias->SetMinimum(-0.5);
     c->Print(("Plots/Bias_Bands_"+est+".pdf").c_str()); 
     p_plot->Clear();
+
+    p_plot->cd();
+    hs_Variance->Draw("nostack HIST");
+    SetAxisFonts(hs_Variance);
+    hs_Variance->SetMaximum(0.21);
+    //hs_Variance->SetMinimum(0.0);
+    c->Print(("Plots/Variance_Bands_"+est+".pdf").c_str()); 
+    p_plot->Clear();
+
     l->Clear();
 
   }
-
-  // Also draw the width of the band
-
-  THStack* hs_Width = new THStack("hs_Width",";True Neutrino Energy (GeV);Band Width");
-
-  for(size_t i_e=0;i_e<kMAX;i_e++){
-    std::string est = estimators_str.at(i_e);
-    h_band_width.at(i_e)->SetLineColor(colors.at(i_e));
-    h_band_width.at(i_e)->SetLineWidth(2);
-    l->AddEntry(h_band_width.at(i_e),estimators_leg.at(i_e).c_str(),"L");
-    hs_Width->Add(h_band_width.at(i_e));
-  } 
-
-  p_plot->cd();
-  hs_Width->Draw("nostack HIST");
-  SetAxisFonts(hs_Width);
-  c->Print("Plots/Bias_Bands_Widths.pdf"); 
-  p_plot->Clear();
-  l->Clear(); 
 
 }

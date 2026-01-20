@@ -107,7 +107,7 @@ void DeltaCPPlot(){
 
   PlotSetup(); 
 
-  c->SetCanvasSize(800,450);
+  c->SetCanvasSize(800,420);
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
@@ -118,7 +118,7 @@ void DeltaCPPlot(){
   f_flux->Close();
   h_flux->Scale(1.0/h_flux->Integral());
 
-  std::string var = "Neutrons";
+  std::string var = "Angle";
 
   TFile* f = TFile::Open("ResponseMatricesNue.root");
 
