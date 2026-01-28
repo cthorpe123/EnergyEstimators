@@ -6,7 +6,7 @@
 #pragma link C++ class std::vector<TLorentzVector>+;
 
 //const int markers[4] = {8,21,22,34};
-const int markers[4] = {4,25,26,28};
+const int markers[4] = {4,25,40,28};
 
 // Detector exposure to normalise plots to in KT x 10^21 POT
 double fid_mass = 10; // active mass in KT
@@ -146,8 +146,8 @@ void SensitivityPlots(){
 
   h_axes->Draw("HIST");
   SetAxisFontsH(h_axes); 
-  h_axes->SetMinimum(0.45);
-  h_axes->SetMaximum(1.3);
+  h_axes->SetMinimum(0.47);
+  h_axes->SetMaximum(1.31);
   h_axes->SetStats(0);
   for(int i_e=0;i_e<kMAX;i_e++) h_axes->GetXaxis()->SetBinLabel(i_e+1,estimators_leg.at(i_e).c_str());
   h_axes->GetXaxis()->SetLabelOffset(0.01);

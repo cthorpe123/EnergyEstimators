@@ -38,6 +38,7 @@ void Efficiencies(){
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
 
+    Double_t scale;
     Double_t weight;
     Double_t nu_e;
     Int_t ccnc;
@@ -47,6 +48,7 @@ void Efficiencies(){
     std::vector<int>* pdg=0;
     std::vector<TLorentzVector>* p4=0;
 
+    t->SetBranchAddress("scale",&scale);
     t->SetBranchAddress("weight",&weight);
     t->SetBranchAddress("nu_e",&nu_e);
     t->SetBranchAddress("nu_pdg",&nu_pdg);
@@ -63,11 +65,12 @@ void Efficiencies(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 50000) break;
+      if(ievent > 100000) break;
       if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
       if(generator != "GiBUU") weight = 1.0;
+      weight *= scale*1e38*40;
 
       if(nu_pdg != 14 || ccnc != 1) continue;
 
@@ -93,6 +96,89 @@ void Efficiencies(){
   }
 
   gSystem->Exec("mkdir -p Plots/EfficiencyPlots/");
+
+
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+    THStack* hs = new THStack("hs",";True Neutrino Energy (GeV);Rate (Arb. Units)");
+
+    DivideByBinWidth(h_TrueEnergy.at(i_f));
+    h_TrueEnergy.at(i_f)->SetLineWidth(2);
+    h_TrueEnergy.at(i_f)->SetLineColor(1);
+    hs->Add(h_TrueEnergy.at(i_f));
+    l->AddEntry(h_TrueEnergy.at(i_f),"All Events","L");
+
+    DivideByBinWidth(h_TrueEnergy_Np.at(i_f));
+    h_TrueEnergy_Np.at(i_f)->SetLineWidth(2);
+    h_TrueEnergy_Np.at(i_f)->SetLineColor(2);
+    hs->Add(h_TrueEnergy_Np.at(i_f));
+    l->AddEntry(h_TrueEnergy_Np.at(i_f),"Np","L");
+
+    DivideByBinWidth(h_TrueEnergy_Np0pi.at(i_f));
+    h_TrueEnergy_Np0pi.at(i_f)->SetLineWidth(2);
+    h_TrueEnergy_Np0pi.at(i_f)->SetLineColor(3);
+    hs->Add(h_TrueEnergy_Np0pi.at(i_f));
+    l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0#pi","L");
+
+    DivideByBinWidth(h_TrueEnergy_1p0pi.at(i_f));
+    h_TrueEnergy_1p0pi.at(i_f)->SetLineWidth(2);
+    h_TrueEnergy_1p0pi.at(i_f)->SetLineColor(4);
+    hs->Add(h_TrueEnergy_1p0pi.at(i_f));
+    l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0#pi","L");
+
+    p_plot->cd();
+    hs->Draw("HIST nostack");
+    SetAxisFonts(hs);
+
+    c->Print(("Plots/EfficiencyPlots/Rate_"+Generators_v.at(i_f)+".pdf").c_str());
+    l->Clear();
+    p_plot->Clear();
+
+    delete hs;
+
+  }
+
+  l->SetNColumns(InputFiles_v.size());
+
+  THStack* hs_rate_all = new THStack("hs_rate_all",";True Neutrino Energy (GeV);Rate (Arb. U)");
+  
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+  }
+  
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+    h_TrueEnergy.at(i_f)->SetLineColor(i_f+1);
+    h_TrueEnergy_Np.at(i_f)->SetLineColor(i_f+1);
+    h_TrueEnergy_Np0pi.at(i_f)->SetLineColor(i_f+1); 
+    h_TrueEnergy_1p0pi.at(i_f)->SetLineColor(i_f+1); 
+  }
+   
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+    h_TrueEnergy.at(i_f)->SetLineStyle(1); 
+    h_TrueEnergy_Np.at(i_f)->SetLineStyle(2); 
+    h_TrueEnergy_Np0pi.at(i_f)->SetLineStyle(3); 
+    h_TrueEnergy_1p0pi.at(i_f)->SetLineStyle(4); 
+  }
+
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
+    hs_rate_all->Add(h_TrueEnergy.at(i_f));
+    hs_rate_all->Add(h_TrueEnergy_Np.at(i_f));
+    hs_rate_all->Add(h_TrueEnergy_Np0pi.at(i_f));
+    hs_rate_all->Add(h_TrueEnergy_1p0pi.at(i_f));
+  }
+
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++) l->AddEntry(h_TrueEnergy.at(i_f),Generators_v.at(i_f).c_str(),"L"); 
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++) l->AddEntry(h_TrueEnergy_Np.at(i_f),"Np","L"); 
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++) l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0#pi","L"); 
+  for(size_t i_f=0;i_f<InputFiles_v.size();i_f++) l->AddEntry(h_TrueEnergy_1p0pi.at(i_f),"1p0#pi","L"); 
+ 
+  p_plot->cd(); 
+  hs_rate_all->Draw("nostack HIST");
+  SetAxisFonts(hs_rate_all);
+
+  c->Print("Plots/EfficiencyPlots/Rates.pdf");
+  p_plot->Clear();
+  l->Clear();
+
+  l->SetNColumns(3);
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
     THStack* hs = new THStack("hs",";True Neutrino Energy (GeV);Fraction");
@@ -138,9 +224,9 @@ void Efficiencies(){
   }
    
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-    h_TrueEnergy_Np.at(i_f)->SetLineStyle(1); 
-    h_TrueEnergy_Np0pi.at(i_f)->SetLineStyle(2); 
-    h_TrueEnergy_1p0pi.at(i_f)->SetLineStyle(3); 
+    h_TrueEnergy_Np.at(i_f)->SetLineStyle(2); 
+    h_TrueEnergy_Np0pi.at(i_f)->SetLineStyle(3); 
+    h_TrueEnergy_1p0pi.at(i_f)->SetLineStyle(4); 
     l->AddEntry(h_TrueEnergy_Np0pi.at(i_f),"Np0#pi","L"); 
   }
 

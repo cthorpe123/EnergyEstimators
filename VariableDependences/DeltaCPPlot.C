@@ -231,7 +231,7 @@ void DeltaCPPlot(){
 
       }
 
-      std::string title = ";"+axis_title+"Measured #delta_{CP} - Input #delta_{CP} (rad)";
+      std::string title = ";Cut on "+axis_title+"Measured #delta_{CP} - Input #delta_{CP} (rad)";
       //THStack* hs = new THStack("hs",title.c_str());     
       TMultiGraph* mg = new TMultiGraph("mg",title.c_str());
 

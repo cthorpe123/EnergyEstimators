@@ -31,6 +31,7 @@ const double mpi = 0.13957;
 const double mpi0 = 0.13498;
 const double MA = 22*Mn + 18*Mp - 0.34381;
 const double MA1 = MA - Mn;
+const double MDelta = 1.232;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Visible hadronic invariant mass 
@@ -107,10 +108,10 @@ std::vector<TVector3> GetNeutronMom(const std::vector<int>* pdg_v,const std::vec
 ////////////////////////////////////////////////////////////////////////////////
 // Different neutrino energy calculators 
 
-enum estimators { kMuonKin , kMuonKinWNP , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMAX };
-const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" };
-const std::vector<std::string> estimators_leg = { "CCQE-like" , "W^{2}" , "Proton-Based"  , "Calorimetric" , "SF" };
-const std::vector<int> colors = {kCyan+2,kBlue,kRed,kMagenta,kGreen+1};
+enum estimators { kMuonKin , kMuonKinWNP , kPeLEELike0Pi , kTotalEDep , kSFMethod , kMuonKinDelta , kMuonKinCCQE , kMAX };
+const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "TotalEDep" , "SFMethod" , "MuonKinDelta" , "MuonKinCCQE" };
+const std::vector<std::string> estimators_leg = { "CCQE-like" , "W^{2}" , "Proton-Based"  , "Calorimetric" , "SF" , "CCQE-like #Delta Corr" , "CCQE-like 1p" };
+const std::vector<int> colors = {kCyan+2,kBlue,kRed,kMagenta,kGreen+1,kBlue-9,kRed-9};
 
 double T2KEnergy(const TLorentzVector* plepton){
   return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
@@ -181,6 +182,8 @@ double GetEnergy(const TLorentzVector* plepton,const double& W, const int& nprot
     case kPeLEELike0Pi: if(!ppions.size() && !ppizeros.size()) return peleeEnergy(plepton,pprotons); else return -1;
     case kTotalEDep: return totaledepEnergy(plepton,pprotons,ppions,ppizeros);
     case kSFMethod: if(pprotons.size() == 1 && !ppions.size() && !ppizeros.size()) return sfmethodEnergy(plepton,pprotons); else return -1;
+    case kMuonKinDelta: if(pprotons.size() == 1) return ubooneEnergy(plepton,ppions.size()+ppizeros.size() ? MDelta : Mp, 1); else return -1;
+    case kMuonKinCCQE: if(pprotons.size() == 1 && !ppions.size() && !ppizeros.size()) return T2KEnergy(plepton); else return -1;
     default: return -1;
   }
 

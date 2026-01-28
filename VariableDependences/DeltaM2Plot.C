@@ -210,7 +210,7 @@ void DeltaM2Plot(){
 
     }
 
-    std::string title = ";"+axis_title+"Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}";
+    std::string title = ";Cut on "+axis_title+"Measured #Delta m^{2}_{23}/Input #Delta m^{2}_{23}";
     //THStack* hs = new THStack("hs",title.c_str());     
     TMultiGraph* mg = new TMultiGraph("mg",title.c_str());
 

@@ -11,7 +11,6 @@ void BiasWithCuts(){
 
   std::vector<std::string> vars = {"W","Angle","MissingE","Neutrons"};
   std::vector<std::string> x_axis_titles = {"W_{vis} (GeV)","#theta (rad)","Missing Hadronic Energy (GeV)","N"};
-  std::vector<std::string> y_axis_titles = {"B' - B","B' - B","B' - B","B' - B",};
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 
@@ -68,7 +67,7 @@ void BiasWithCuts(){
       f_line->SetLineWidth(2);
       f_line->SetLineStyle(9);
 
-      std::string title = ";"+x_axis_titles.at(i_v)+";"+y_axis_titles.at(i_v);
+      std::string title = ";Cut on "+x_axis_titles.at(i_v)+";Frac. Change in Overall Bias";
       THStack* hs = new THStack("hs",title.c_str());
       for(int i_e=0;i_e<h_Bias.size();i_e++){
         if(var == "W" && i_e == kSFMethod) continue;

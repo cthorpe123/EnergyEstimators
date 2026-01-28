@@ -15,7 +15,7 @@ void PlotSetup(){
   p_plot->SetLeftMargin(0.1);
 
   l->SetBorderSize(0);
-  l->SetNColumns(5);
+  l->SetNColumns(3);
 
   p_legend->Draw();
   p_legend->cd();

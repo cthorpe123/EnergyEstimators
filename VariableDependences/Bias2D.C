@@ -1,11 +1,8 @@
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "../Funcs/Funcs.h"
-#include "../Funcs/PlotSetup.h"
 #include "TLorentzVector.h"
 
-void VariableDependences(){
-
-  PlotSetup(); 
+void Bias2D(){
 
   bool rebin = false;
 
@@ -16,8 +13,6 @@ void VariableDependences(){
   std::vector<std::string> dist_axis_titles = {"PDF (1/GeV)","PDF (1/GeV)","PDF","PDF (1/GeV)","PDF","PDF (1/GeV)"};
 
   std::vector<std::vector<std::vector<TH2D*>>> h_EnergyBias(kMAX,std::vector<std::vector<TH2D*>>(Generators_v.size(),std::vector<TH2D*>(vars.size())));
-  std::vector<std::vector<std::vector<TH3D*>>> h_TrueEnergy_RecoEnergy(kMAX,std::vector<std::vector<TH3D*>>(Generators_v.size(),std::vector<TH3D*>(vars.size())));
-  std::vector<std::vector<TH1D*>> h_var(Generators_v.size(),std::vector<TH1D*>(vars.size()));
 
   std::vector<int> points;
   std::vector<std::vector<double>> binning;
@@ -119,16 +114,14 @@ void VariableDependences(){
       std::string var = vars.at(i_v);
       for(size_t i_e=0;i_e<kMAX;i_e++){
         std::string estimator = estimators_str.at(i_e);
-        h_EnergyBias.at(i_e).at(i_f).at(i_v) = new TH2D((gen+"_EnergyBias_"+var+"_"+estimator).c_str(),"",points.at(i_v),binning_a.at(i_v),100,0,2);
-        h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v) = new TH3D((gen+"_TrueEnergy_RecoEnergy_"+var+"_"+estimator).c_str(),"",n_bins,bins_a,n_bins,bins_a,points.at(i_v),binning_a.at(i_v));
+        h_EnergyBias.at(i_e).at(i_f).at(i_v) = new TH2D((gen+"_EnergyBias_"+var+"_"+estimator).c_str(),"",points.at(i_v),binning_a.at(i_v),300,-1.0,1.0);
       }
-      h_var.at(i_f).at(i_v) =  new TH1D((gen+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
     }
 
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 100000) break;
+      //if(ievent > 10000) break;
       if(ievent % 20000 == 0) std::cout << gen << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -150,14 +143,11 @@ void VariableDependences(){
 
       for(size_t i_v=0;i_v<vars.size();i_v++){
         double val = values.at(i_v);
-        h_var.at(i_f).at(i_v)->Fill(val,weight);
         for(int i_e=0;i_e<kMAX;i_e++){
           double nu_e_reco = est_nu_e->at(i_e);
            double bias = (nu_e_reco-nu_e)/nu_e;
-          //double bias = nu_e_reco/nu_e;
           if(nu_e_reco < 0) continue;
           h_EnergyBias.at(i_e).at(i_f).at(i_v)->Fill(val,bias,weight);  
-          h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v)->Fill(nu_e,nu_e_reco,val,weight);        
         } // i_e
       } // i_v
 
@@ -167,145 +157,28 @@ void VariableDependences(){
 
   gSystem->Exec("mkdir -p Plots/");
 
-  // Bias AFO difference variables
-  for(size_t i_v=0;i_v<vars.size();i_v++){
+  TCanvas* c2 = new TCanvas("c2","c2",850,700);
+  c2->SetBottomMargin(0.12);
+  c2->SetLeftMargin(0.12);
+  c2->SetRightMargin(0.15);
+  c2->SetLogz();
 
+  // 2D fractional energy bias vs 3rd variable plots
+  for(size_t i_v=0;i_v<vars.size();i_v++){
     std::string var = vars.at(i_v);
     std::string axis_title = axis_titles.at(i_v);
-
-    gSystem->Exec(("mkdir -p Plots/" + var).c_str());
-
-    for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-
-      std::string gen = Generators_v.at(i_f);
-      THStack* hs_Bias = new THStack(("hs_Bias"+gen+"_"+var).c_str(),(";"+axis_title+";Frac. Bias").c_str());
-      THStack* hs_Variance = new THStack(("hs_Variance"+gen+"_"+var).c_str(),(";"+axis_title+";Frac. Variance").c_str());
-      std::vector<TH1D*> h_Bias;
-      std::vector<TH1D*> h_Variance;
-
-      for(size_t i_e=0;i_e<kMAX;i_e++){
-
-        if(var == "W" && i_e == kSFMethod) continue;
-        std::string est = estimators_str.at(i_e);
-
-        const TH3D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v);
-        h_Bias.push_back(new TH1D(("h_Bias_W_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
-        h_Variance.push_back(new TH1D(("h_Variance_W_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
-        MakeBiasVarianceFrom3D(h,h_Bias.back(),h_Variance.back());
-        h_Bias.back()->SetLineColor(colors.at(i_e));
-        h_Bias.back()->SetLineWidth(2);
-        hs_Bias->Add(h_Bias.back());
-
-        h_Variance.back()->SetLineColor(colors.at(i_e));
-        h_Variance.back()->SetLineWidth(2);
-        hs_Variance->Add(h_Variance.back());
-
-        l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L");
-
-      }
-
-      p_plot->cd();
-      hs_Bias->Draw("nostack HIST");
-      SetAxisFonts(hs_Bias);
-      hs_Bias->SetMaximum(0.06);
-      hs_Bias->SetMinimum(-0.5);
-      c->Print(("Plots/"+var+"/Bias_"+gen+".pdf").c_str());  
-      p_plot->Clear();
-
-      hs_Variance->Draw("nostack HIST");
-      SetAxisFonts(hs_Variance);
-      hs_Variance->SetMaximum(0.27);
-      hs_Variance->SetMinimum(0);
-      c->Print(("Plots/"+var+"/Variance_"+gen+".pdf").c_str());  
-      p_plot->Clear();
-      l->Clear();
-
-    }
-
-  }
-
-  // Distribution of each variable
-  for(size_t i_v=0;i_v<vars.size();i_v++){
-
-    std::string axis_title = axis_titles.at(i_v);
-    std::string y_axis_title = dist_axis_titles.at(i_v);
-    std::string var = vars.at(i_v);
-
-    THStack* hs = new THStack(("hs_"+var).c_str(),(";"+axis_title+";"+y_axis_title).c_str());
-
-    for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-
-      std::string gen = Generators_v.at(i_f);
-
-      TH1D* h = h_var.at(i_f).at(i_v);
-      h->Scale(1.0/h->Integral());
-      DivideByBinWidth(h);
-      h->SetLineColor(i_f+1);
-      h->SetLineWidth(2);
-      hs->Add(h);
-      l->AddEntry(h,gen.c_str(),"L");
-
-    }
-
-    p_plot->cd();
-    hs->Draw("HIST nostack");
-    SetAxisFonts(hs);
-    c->Print(("Plots/"+var+"/Dist.pdf").c_str());
-    p_plot->Clear();
-
-    l->Clear();
-
-  }
-
-
-  // Band and band width plots
-  for(size_t i_v=0;i_v<vars.size();i_v++){
-
-    std::string var = vars.at(i_v);
-    std::string axis_title = axis_titles.at(i_v);
-
-    // Calculate the difference in bias between the difference generators - calculate spread  
-    std::vector<std::vector<TH1D*>> h_bias(kMAX,std::vector<TH1D*>(InputFiles_v.size()));
-
     for(size_t i_e=0;i_e<kMAX;i_e++){
-
       if(var == "W" && i_e == kSFMethod) continue;
-
       std::string est = estimators_str.at(i_e);
-
-      THStack* hs_Bias = new THStack(("hs_Bias_"+var+"_"+est).c_str(),(";"+axis_title+";Frac. Bias").c_str());
-
       for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-
         std::string gen = Generators_v.at(i_f);
-
-        TH3D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v);
-        h_bias.at(i_e).at(i_f) = new TH1D(("h_Bias2_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
-        TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",points.at(i_v),binning_a.at(i_v));
-        MakeBiasVarianceFrom3D(h,h_bias.at(i_e).at(i_f),h_variance); 
-
-        delete h;
-        delete h_variance;
-
-        h_bias.at(i_e).at(i_f)->SetLineColor(colors.at(i_e));
-        h_bias.at(i_e).at(i_f)->SetLineStyle(i_f+1);
-        h_bias.at(i_e).at(i_f)->SetLineWidth(2);
-        hs_Bias->Add(h_bias.at(i_e).at(i_f));
-        l->AddEntry(h_bias.at(i_e).at(i_f),gen.c_str(),"L");
-               
-      } 
-
-      p_plot->cd();
-      hs_Bias->Draw("nostack HIST");
-      hs_Bias->SetMinimum(-0.62);
-      hs_Bias->SetMaximum(0.12);
-      SetAxisFonts(hs_Bias);
-      c->Print(("Plots/"+var+"/Bias_Bands"+est+".pdf").c_str()); 
-      p_plot->Clear();
-      l->Clear();
-
+        h_EnergyBias.at(i_e).at(i_f).at(i_v)->Scale(1.0/h_EnergyBias.at(i_e).at(i_f).at(i_v)->Integral());
+        h_EnergyBias.at(i_e).at(i_f).at(i_v)->Draw("colz");
+        h_EnergyBias.at(i_e).at(i_f).at(i_v)->SetStats(0);
+        c2->Print(("Plots/"+var+"/Bias2D_"+est+"_"+gen+".pdf").c_str()); 
+        c2->Clear();
+      }
     }
-
   }
 
 }

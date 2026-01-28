@@ -53,7 +53,7 @@ void NuMuRates(){
     h_RecoEnergy_Smeared_DeltaMSq_Plus.push_back(std::vector<TH1D*>());
     h_RecoEnergy_Smeared_DeltaMSq_Minus.push_back(std::vector<TH1D*>());
 
-    int nbins = 100;
+    int nbins = 200;
     for(std::string estimator : estimators_str){
       h_RecoEnergy_DeltaMSq_CV.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaMSq_CV_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));
       h_RecoEnergy_DeltaMSq_Plus.back().push_back(new TH1D((generator+"_RecoEnergy_DeltaMSq_Plus_"+estimator).c_str(),";Estimated Neutrino Energy (GeV);Events/KT/GeV/10^{21} POT",nbins,0.1,8.0));

@@ -4,8 +4,8 @@
 
 const double _EPSILON_ = 0.01;
 
-const std::string generator = "GiBUU_Nue";
-const int target_nu_pdg = 12;
+const std::string generator = "NEUT";
+const int target_nu_pdg = 14;
 
 void Filter(){
 
