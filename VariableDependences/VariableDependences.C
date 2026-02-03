@@ -128,7 +128,7 @@ void VariableDependences(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 100000) break;
+      //if(ievent > 1000) break;
       if(ievent % 20000 == 0) std::cout << gen << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -225,6 +225,7 @@ void VariableDependences(){
   }
 
   // Distribution of each variable
+  l->SetNColumns(4);
   for(size_t i_v=0;i_v<vars.size();i_v++){
 
     std::string axis_title = axis_titles.at(i_v);
@@ -256,7 +257,6 @@ void VariableDependences(){
     l->Clear();
 
   }
-
 
   // Band and band width plots
   for(size_t i_v=0;i_v<vars.size();i_v++){

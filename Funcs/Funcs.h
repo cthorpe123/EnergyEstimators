@@ -22,6 +22,7 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
   int nbins_y = h_Data->GetNbinsY();
 
   for(int i=1;i<nbins_x+1;i++){
+    
     double mean = 0.0;
     double events = 0.0;
     for(int j=1;j<nbins_y+1;j++){
@@ -32,6 +33,7 @@ void GetBiasVariance(const TH2D* h_Data,TH1D*& h_Bias,TH1D*& h_Variance){
     mean /= events;
 
     h_Bias->SetBinContent(i,(mean - h_Bias->GetBinCenter(i))/h_Bias->GetBinCenter(i));
+
     if(events == 0.0) h_Bias->SetBinContent(i,0);
 
     double var = 0.0; 
@@ -66,7 +68,6 @@ void MakeBiasVarianceFrom3D(const TH3D* h, TH1D* h_bias,TH1D* h_variance){
        events += h->GetBinContent(i,j,k); 
      }
        
-     //std::cout << "z=" << h->GetZaxis()->GetBinCenter(k) <<" true_e=" << h->GetXaxis()->GetBinCenter(i) << " mean/events=" << mean/events << std::endl;       
      h_energy->SetBinContent(i,k,mean/events);
 
     }

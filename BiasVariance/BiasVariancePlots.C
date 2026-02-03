@@ -11,7 +11,7 @@ void BiasVariancePlots(){
   bool draw_smeared = true;
   bool rebin = false;
 
-  std::vector<std::string> InputFiles_v = {"GENIEEvents.root","NEUTEvents.root","GiBUUEvents.root","NuWroEvents.root"};
+  std::vector<std::string> InputFiles_v = {"GENIEEvents.root"/*,"NEUTEvents.root","GiBUUEvents.root","NuWroEvents.root"*/};
   std::vector<std::string> Generators_v = {"GENIE","NEUT","GiBUU","NuWro"};
 
   std::vector<double> true_binning_v;
@@ -38,10 +38,10 @@ void BiasVariancePlots(){
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
       std::string estimator = estimators_str.at(i_e);
-      h_TrueEnergy_RecoEnergy.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"",true_nbins,true_binning_a,200,0.0,10.0));
-      h_TrueEnergy_RecoEnergy_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared_"+estimator).c_str(),"",true_nbins,true_binning_a,200,0.0,10.0));
+      h_TrueEnergy_RecoEnergy.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
+      h_TrueEnergy_RecoEnergy_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared_"+estimator).c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
     }
-    h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared2_TotalEDep").c_str(),"",true_nbins,true_binning_a,200,0.0,10.0));
+    h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared2_TotalEDep").c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
 
 
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
@@ -108,7 +108,7 @@ void BiasVariancePlots(){
   }// i_f
 
 
-  gSystem->Exec("mkdir -p Plots/BiasVariancePlots/");
+  gSystem->Exec("mkdir -p Plots/");
 
   // First calculate the 1D bias/variance plots
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){

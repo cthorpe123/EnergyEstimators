@@ -9,8 +9,8 @@ void BiasWithCuts(){
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
-  std::vector<std::string> vars = {"W","Angle","MissingE","Neutrons"};
-  std::vector<std::string> x_axis_titles = {"W_{vis} (GeV)","#theta (rad)","Missing Hadronic Energy (GeV)","N"};
+  std::vector<std::string> vars = {"W","Angle","MissingE","Neutrons","LeptonMom"};
+  std::vector<std::string> x_axis_titles = {"W_{vis} (GeV)","#theta (rad)","Missing Hadronic Energy (GeV)","N","p_{l} (GeV)"};
 
   TFile* f = TFile::Open("ResponseMatricesNuMu.root");
 
