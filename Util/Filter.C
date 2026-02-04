@@ -1,11 +1,12 @@
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "TLorentzVector.h"
 #pragma link C++ class std::vector<TLorentzVector>+;
+#include "../Funcs/Smearing.h"
 
 const double _EPSILON_ = 0.01;
 
-const std::string generator = "NEUT";
-const int target_nu_pdg = 14;
+const std::string generator = "NEUT_Nue";
+const int target_nu_pdg = 12;
 
 void Filter(){
 
@@ -34,9 +35,11 @@ void Filter(){
   int nprot;
   double W;
   std::vector<double> est_nu_e(kMAX);
+  std::vector<double> smeared_est_nu_e(kMAX);
   t_out->Branch("W",&W);
   t_out->Branch("nprot",&nprot);
   t_out->Branch("est_nu_e",&est_nu_e);
+  t_out->Branch("smeared_est_nu_e",&smeared_est_nu_e);
 
   for(Long64_t ievent=0;ievent<t_in->GetEntries();ievent++){
 
@@ -61,6 +64,9 @@ void Filter(){
 
     W = CalcW(pdg,p4);
     nprot = GetNProt(pdg,p4);
+    est_nu_e = GetEnergyEst(lepton_p4,pdg,p4);
+
+/*
     std::vector<TVector3> proton_mom = GetParticleMom(pdg,p4,2212);
     std::vector<TVector3> neutron_mom = GetNeutronMom(pdg,p4);
     std::vector<TVector3> pion_mom = GetParticleMom(pdg,p4,211);
@@ -68,11 +74,18 @@ void Filter(){
 
     for(int i_e=0;i_e<kMAX;i_e++)
       est_nu_e.at(i_e) = GetEnergy(lepton_p4,W,nprot,proton_mom,pion_mom,pizero_mom,neutron_mom,i_e);
-    
+*/
+
+    // Calculate predictions with kinematic smearing 
+    TLorentzVector s_lepton_p4 = *lepton_p4;
+    smearing::smear_mom(s_lepton_p4,13);
+    std::vector<TLorentzVector> s_p4 = *p4;
+    for(int i=0;i<p4->size();i++) smearing::smear_mom(s_p4.at(i),pdg->at(i));
+    smeared_est_nu_e = GetEnergyEst(&s_lepton_p4,pdg,&s_p4);
+ 
     t_out->Fill();    
 
   } 
-
 
   std::cout << t_out->GetEntries() << std::endl;
 

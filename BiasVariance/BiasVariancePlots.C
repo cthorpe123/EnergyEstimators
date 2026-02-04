@@ -11,7 +11,7 @@ void BiasVariancePlots(){
   bool draw_smeared = true;
   bool rebin = false;
 
-  std::vector<std::string> InputFiles_v = {"GENIEEvents.root"/*,"NEUTEvents.root","GiBUUEvents.root","NuWroEvents.root"*/};
+  std::vector<std::string> InputFiles_v = {"GENIEEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root","NuWroEventsFiltered.root"};
   std::vector<std::string> Generators_v = {"GENIE","NEUT","GiBUU","NuWro"};
 
   std::vector<double> true_binning_v;
@@ -43,7 +43,7 @@ void BiasVariancePlots(){
     }
     h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared2_TotalEDep").c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
 
-
+/*
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
 
@@ -64,6 +64,36 @@ void BiasVariancePlots(){
     t->SetBranchAddress("lepton_p4",&lepton_p4);
     t->SetBranchAddress("pdg",&pdg);
     t->SetBranchAddress("p4",&p4);
+*/
+
+    TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
+    TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
+
+    Double_t weight;
+    Double_t nu_e;
+    Int_t ccnc;
+    Int_t nu_pdg;  
+    Int_t lepton_pdg;
+    TLorentzVector* lepton_p4=0;
+    std::vector<int>* pdg=0;
+    std::vector<TLorentzVector>* p4=0;
+    int nprot;
+    double W;
+    std::vector<double>* est_nu_e=0;
+    std::vector<double>* smeared_est_nu_e=0;
+
+    t->SetBranchAddress("weight",&weight);
+    t->SetBranchAddress("nu_e",&nu_e);
+    t->SetBranchAddress("nu_pdg",&nu_pdg);
+    t->SetBranchAddress("ccnc",&ccnc);
+    t->SetBranchAddress("lepton_pdg",&lepton_pdg); 
+    t->SetBranchAddress("lepton_p4",&lepton_p4);
+    t->SetBranchAddress("pdg",&pdg);
+    t->SetBranchAddress("p4",&p4);
+    t->SetBranchAddress("W",&W);
+    t->SetBranchAddress("nprot",&nprot);
+    t->SetBranchAddress("est_nu_e",&est_nu_e);
+    t->SetBranchAddress("smeared_est_nu_e",&smeared_est_nu_e);
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
@@ -79,10 +109,12 @@ void BiasVariancePlots(){
       if(nu_e > 8) continue;
       if(lepton_p4->Vect().Mag() < 0.1) continue; 
 
+/*
       int nprot = GetNProt(pdg,p4);
       double W = CalcW(pdg,p4);
-      //if(nprot < 1) continue;
+*/
 
+/*
       std::vector<double> energies =  GetEnergyEst(lepton_p4,pdg,p4);
 
       // Calculate predictions with kinematic smearing 
@@ -92,16 +124,16 @@ void BiasVariancePlots(){
       double W_smeared = CalcW(pdg,p4);
       std::vector<double> energies_smeared = GetEnergyEst(lepton_p4,pdg,p4);
       //energies_smeared.at(kTotalEDep) = energies.at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0));
-
+*/
       for(int i_e=0;i_e<kMAX;i_e++){
-        double nu_e_reco = energies.at(i_e);
-        double nu_e_reco_smeared = energies_smeared.at(i_e);
+        double nu_e_reco = est_nu_e->at(i_e);
+        double nu_e_reco_smeared = smeared_est_nu_e->at(i_e);
         h_TrueEnergy_RecoEnergy.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco,weight);  
         h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_smeared,weight);  
       }
 
       // Flat 20% smearing on energy
-      h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).at(i_f)->Fill(nu_e,energies.at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0)),weight);  
+      h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).at(i_f)->Fill(nu_e,est_nu_e->at(kTotalEDep)*smearing::rng->Gaus(1.0,smearing::resolutions.at(0)),weight);  
 
     }
 

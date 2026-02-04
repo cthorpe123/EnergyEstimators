@@ -17,6 +17,8 @@ void VariableDependences(){
 
   std::vector<std::vector<std::vector<TH2D*>>> h_EnergyBias(kMAX,std::vector<std::vector<TH2D*>>(Generators_v.size(),std::vector<TH2D*>(vars.size())));
   std::vector<std::vector<std::vector<TH3D*>>> h_TrueEnergy_RecoEnergy(kMAX,std::vector<std::vector<TH3D*>>(Generators_v.size(),std::vector<TH3D*>(vars.size())));
+  std::vector<std::vector<std::vector<TH2D*>>> h_EnergyBias_Smeared(kMAX,std::vector<std::vector<TH2D*>>(Generators_v.size(),std::vector<TH2D*>(vars.size())));
+  std::vector<std::vector<std::vector<TH3D*>>> h_TrueEnergy_RecoEnergy_Smeared(kMAX,std::vector<std::vector<TH3D*>>(Generators_v.size(),std::vector<TH3D*>(vars.size())));
   std::vector<std::vector<TH1D*>> h_var(Generators_v.size(),std::vector<TH1D*>(vars.size()));
 
   std::vector<int> points;
@@ -101,6 +103,7 @@ void VariableDependences(){
     int nprot;
     double W;
     std::vector<double>* est_nu_e=0;
+    std::vector<double>* smeared_est_nu_e=0;
 
     t->SetBranchAddress("weight",&weight);
     t->SetBranchAddress("nu_e",&nu_e);
@@ -113,7 +116,7 @@ void VariableDependences(){
     t->SetBranchAddress("W",&W);
     t->SetBranchAddress("nprot",&nprot);
     t->SetBranchAddress("est_nu_e",&est_nu_e);
-
+    t->SetBranchAddress("smeared_est_nu_e",&smeared_est_nu_e);
 
     for(size_t i_v=0;i_v<vars.size();i_v++){      
       std::string var = vars.at(i_v);
@@ -121,6 +124,8 @@ void VariableDependences(){
         std::string estimator = estimators_str.at(i_e);
         h_EnergyBias.at(i_e).at(i_f).at(i_v) = new TH2D((gen+"_EnergyBias_"+var+"_"+estimator).c_str(),"",points.at(i_v),binning_a.at(i_v),100,0,2);
         h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v) = new TH3D((gen+"_TrueEnergy_RecoEnergy_"+var+"_"+estimator).c_str(),"",n_bins,bins_a,n_bins,bins_a,points.at(i_v),binning_a.at(i_v));
+        h_EnergyBias_Smeared.at(i_e).at(i_f).at(i_v) = new TH2D((gen+"_EnergyBias_Smeared_"+var+"_"+estimator).c_str(),"",points.at(i_v),binning_a.at(i_v),100,0,2);
+        h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f).at(i_v) = new TH3D((gen+"_TrueEnergy_RecoEnergy_Smeared_"+var+"_"+estimator).c_str(),"",n_bins,bins_a,n_bins,bins_a,points.at(i_v),binning_a.at(i_v));
       }
       h_var.at(i_f).at(i_v) =  new TH1D((gen+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
     }
@@ -128,7 +133,7 @@ void VariableDependences(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 1000) break;
+      //if(ievent > 20000) break;
       if(ievent % 20000 == 0) std::cout << gen << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -152,12 +157,13 @@ void VariableDependences(){
         double val = values.at(i_v);
         h_var.at(i_f).at(i_v)->Fill(val,weight);
         for(int i_e=0;i_e<kMAX;i_e++){
-          double nu_e_reco = est_nu_e->at(i_e);
-           double bias = (nu_e_reco-nu_e)/nu_e;
-          //double bias = nu_e_reco/nu_e;
-          if(nu_e_reco < 0) continue;
-          h_EnergyBias.at(i_e).at(i_f).at(i_v)->Fill(val,bias,weight);  
-          h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v)->Fill(nu_e,nu_e_reco,val,weight);        
+
+          h_EnergyBias.at(i_e).at(i_f).at(i_v)->Fill(val,(est_nu_e->at(i_e)-nu_e)/nu_e,weight);  
+          h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v)->Fill(nu_e,est_nu_e->at(i_e),val,weight);        
+
+          h_EnergyBias_Smeared.at(i_e).at(i_f).at(i_v)->Fill(val,(smeared_est_nu_e->at(i_e)-nu_e)/nu_e,weight);  
+          h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f).at(i_v)->Fill(nu_e,smeared_est_nu_e->at(i_e),val,weight);        
+
         } // i_e
       } // i_v
 
@@ -180,8 +186,9 @@ void VariableDependences(){
       std::string gen = Generators_v.at(i_f);
       THStack* hs_Bias = new THStack(("hs_Bias"+gen+"_"+var).c_str(),(";"+axis_title+";Frac. Bias").c_str());
       THStack* hs_Variance = new THStack(("hs_Variance"+gen+"_"+var).c_str(),(";"+axis_title+";Frac. Variance").c_str());
-      std::vector<TH1D*> h_Bias;
-      std::vector<TH1D*> h_Variance;
+      THStack* hs_Bias_Smeared = new THStack(("hs_Bias_Smeared"+gen+"_"+var).c_str(),(";"+axis_title+";Frac. Bias").c_str());
+      THStack* hs_Variance_Smeared = new THStack(("hs_Variance_Smeared"+gen+"_"+var).c_str(),(";"+axis_title+";Frac. Variance").c_str());
+      std::vector<TH1D*> h_Bias,h_Bias_Smeared,h_Variance,h_Variance_Smeared;
 
       for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -189,16 +196,30 @@ void VariableDependences(){
         std::string est = estimators_str.at(i_e);
 
         const TH3D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v);
-        h_Bias.push_back(new TH1D(("h_Bias_W_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
-        h_Variance.push_back(new TH1D(("h_Variance_W_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
+        h_Bias.push_back(new TH1D(("h_Bias_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
+        h_Variance.push_back(new TH1D(("h_Variance_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
         MakeBiasVarianceFrom3D(h,h_Bias.back(),h_Variance.back());
+
+        const TH3D* h_Smeared = h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f).at(i_v);
+        h_Bias_Smeared.push_back(new TH1D(("h_Bias_Smeared_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
+        h_Variance_Smeared.push_back(new TH1D(("h_Variance_Smeared_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v)));
+        MakeBiasVarianceFrom3D(h_Smeared,h_Bias_Smeared.back(),h_Variance_Smeared.back());
+
         h_Bias.back()->SetLineColor(colors.at(i_e));
         h_Bias.back()->SetLineWidth(2);
         hs_Bias->Add(h_Bias.back());
 
+        h_Bias_Smeared.back()->SetLineColor(colors.at(i_e));
+        h_Bias_Smeared.back()->SetLineWidth(2);
+        hs_Bias_Smeared->Add(h_Bias_Smeared.back());
+
         h_Variance.back()->SetLineColor(colors.at(i_e));
         h_Variance.back()->SetLineWidth(2);
         hs_Variance->Add(h_Variance.back());
+
+        h_Variance_Smeared.back()->SetLineColor(colors.at(i_e));
+        h_Variance_Smeared.back()->SetLineWidth(2);
+        hs_Variance_Smeared->Add(h_Variance_Smeared.back());
 
         l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L");
 
@@ -212,12 +233,27 @@ void VariableDependences(){
       c->Print(("Plots/"+var+"/Bias_"+gen+".pdf").c_str());  
       p_plot->Clear();
 
+      hs_Bias_Smeared->Draw("nostack HIST");
+      SetAxisFonts(hs_Bias_Smeared);
+      hs_Bias_Smeared->SetMaximum(0.06);
+      hs_Bias_Smeared->SetMinimum(-0.5);
+      c->Print(("Plots/"+var+"/Bias_Smeared_"+gen+".pdf").c_str());  
+      p_plot->Clear();
+
       hs_Variance->Draw("nostack HIST");
       SetAxisFonts(hs_Variance);
       hs_Variance->SetMaximum(0.27);
       hs_Variance->SetMinimum(0);
       c->Print(("Plots/"+var+"/Variance_"+gen+".pdf").c_str());  
       p_plot->Clear();
+
+      hs_Variance_Smeared->Draw("nostack HIST");
+      SetAxisFonts(hs_Variance_Smeared);
+      hs_Variance_Smeared->SetMaximum(0.27);
+      hs_Variance_Smeared->SetMinimum(0);
+      c->Print(("Plots/"+var+"/Variance_Smeared_"+gen+".pdf").c_str());  
+      p_plot->Clear();
+
       l->Clear();
 
     }
@@ -266,6 +302,7 @@ void VariableDependences(){
 
     // Calculate the difference in bias between the difference generators - calculate spread  
     std::vector<std::vector<TH1D*>> h_bias(kMAX,std::vector<TH1D*>(InputFiles_v.size()));
+    std::vector<std::vector<TH1D*>> h_bias_Smeared(kMAX,std::vector<TH1D*>(InputFiles_v.size()));
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -274,6 +311,7 @@ void VariableDependences(){
       std::string est = estimators_str.at(i_e);
 
       THStack* hs_Bias = new THStack(("hs_Bias_"+var+"_"+est).c_str(),(";"+axis_title+";Frac. Bias").c_str());
+      THStack* hs_Bias_Smeared = new THStack(("hs_Bias_Smeared_"+var+"_"+est).c_str(),(";"+axis_title+";Frac. Bias").c_str());
 
       for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -284,13 +322,26 @@ void VariableDependences(){
         TH1D* h_variance = new TH1D(("h_Variance2_"+gen+"_"+est).c_str(),"",points.at(i_v),binning_a.at(i_v));
         MakeBiasVarianceFrom3D(h,h_bias.at(i_e).at(i_f),h_variance); 
 
+        TH3D* h_Smeared = h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f).at(i_v);
+        h_bias_Smeared.at(i_e).at(i_f) = new TH1D(("h_Bias2_Smeared_"+gen+"_"+est+"_"+var).c_str(),"",points.at(i_v),binning_a.at(i_v));
+        TH1D* h_variance_Smeared = new TH1D(("h_Variance2_Smeared_"+gen+"_"+est).c_str(),"",points.at(i_v),binning_a.at(i_v));
+        MakeBiasVarianceFrom3D(h_Smeared,h_bias_Smeared.at(i_e).at(i_f),h_variance_Smeared); 
+
         delete h;
+        delete h_Smeared;
         delete h_variance;
+        delete h_variance_Smeared;
 
         h_bias.at(i_e).at(i_f)->SetLineColor(colors.at(i_e));
         h_bias.at(i_e).at(i_f)->SetLineStyle(i_f+1);
         h_bias.at(i_e).at(i_f)->SetLineWidth(2);
         hs_Bias->Add(h_bias.at(i_e).at(i_f));
+
+        h_bias_Smeared.at(i_e).at(i_f)->SetLineColor(colors.at(i_e));
+        h_bias_Smeared.at(i_e).at(i_f)->SetLineStyle(i_f+1);
+        h_bias_Smeared.at(i_e).at(i_f)->SetLineWidth(2);
+        hs_Bias_Smeared->Add(h_bias_Smeared.at(i_e).at(i_f));
+
         l->AddEntry(h_bias.at(i_e).at(i_f),gen.c_str(),"L");
                
       } 
@@ -300,8 +351,16 @@ void VariableDependences(){
       hs_Bias->SetMinimum(-0.62);
       hs_Bias->SetMaximum(0.12);
       SetAxisFonts(hs_Bias);
-      c->Print(("Plots/"+var+"/Bias_Bands"+est+".pdf").c_str()); 
+      c->Print(("Plots/"+var+"/Bias_Bands_"+est+".pdf").c_str()); 
       p_plot->Clear();
+
+      hs_Bias_Smeared->Draw("nostack HIST");
+      hs_Bias_Smeared->SetMinimum(-0.62);
+      hs_Bias_Smeared->SetMaximum(0.12);
+      SetAxisFonts(hs_Bias_Smeared);
+      c->Print(("Plots/"+var+"/Bias_Bands_Smeared_"+est+".pdf").c_str()); 
+      p_plot->Clear();
+
       l->Clear();
 
     }

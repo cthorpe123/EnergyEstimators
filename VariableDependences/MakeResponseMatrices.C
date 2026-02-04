@@ -44,6 +44,12 @@ void MakeResponseMatrices(){
   std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_Neutrons(kMAX);
   std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_LeptonMom(kMAX);
 
+  std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_W_Smeared(kMAX);
+  std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_Angle_Smeared(kMAX);
+  std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_MissingE_Smeared(kMAX);
+  std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_Neutrons_Smeared(kMAX);
+  std::vector<std::vector<TH3D*>> h_TrueEnergy_RecoEnergy_LeptonMom_Smeared(kMAX);
+
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
     std::string generator = Generators_v.at(i_f);    
@@ -62,6 +68,7 @@ void MakeResponseMatrices(){
     int nprot;
     double W;
     std::vector<double>* est_nu_e=0;
+    std::vector<double>* smeared_est_nu_e=0;
 
     t->SetBranchAddress("weight",&weight);
     t->SetBranchAddress("nu_e",&nu_e);
@@ -74,6 +81,7 @@ void MakeResponseMatrices(){
     t->SetBranchAddress("W",&W);
     t->SetBranchAddress("nprot",&nprot);
     t->SetBranchAddress("est_nu_e",&est_nu_e);
+    t->SetBranchAddress("smeared_est_nu_e",&smeared_est_nu_e);
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
       std::string est = estimators_str.at(i_e);
@@ -82,11 +90,24 @@ void MakeResponseMatrices(){
       h_TrueEnergy_RecoEnergy_MissingE.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_MissingE_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);Missing Hadronic Energy (GeV);",n_bins,bins_a,n_bins,bins_a,miss_points,miss_binning_a));
       h_TrueEnergy_RecoEnergy_Neutrons.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_Neutrons_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);FS Neutrons;",n_bins,bins_a,n_bins,bins_a,n_points,n_binning_a));
       h_TrueEnergy_RecoEnergy_LeptonMom.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_LeptonMom_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);p_{l} (GeV);",n_bins,bins_a,n_bins,bins_a,lepton_p_points,lepton_p_binning_a));
+
+      h_TrueEnergy_RecoEnergy_W_Smeared.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_W_Smeared_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);W_{vis} (GeV);",n_bins,bins_a,n_bins,bins_a,w_points,w_binning_a));
+      h_TrueEnergy_RecoEnergy_Angle_Smeared.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_Angle_Smeared_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);#theta (rad);",n_bins,bins_a,n_bins,bins_a,ang_points,ang_binning_a));
+      h_TrueEnergy_RecoEnergy_MissingE_Smeared.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_MissingE_Smeared_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);Missing Hadronic Energy (GeV);",n_bins,bins_a,n_bins,bins_a,miss_points,miss_binning_a));
+      h_TrueEnergy_RecoEnergy_Neutrons_Smeared.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_Neutrons_Smeared_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);FS Neutrons;",n_bins,bins_a,n_bins,bins_a,n_points,n_binning_a));
+      h_TrueEnergy_RecoEnergy_LeptonMom_Smeared.at(i_e).push_back(new TH3D((generator+"_TrueEnergy_RecoEnergy_LeptonMom_Smeared_"+est).c_str(),";E_{true} (GeV);E_{est} (GeV);p_{l} (GeV);",n_bins,bins_a,n_bins,bins_a,lepton_p_points,lepton_p_binning_a));
+
       h_TrueEnergy_RecoEnergy_W.at(i_e).back()->SetDirectory(0);
       h_TrueEnergy_RecoEnergy_Angle.at(i_e).back()->SetDirectory(0);
       h_TrueEnergy_RecoEnergy_MissingE.at(i_e).back()->SetDirectory(0);
       h_TrueEnergy_RecoEnergy_Neutrons.at(i_e).back()->SetDirectory(0);
       h_TrueEnergy_RecoEnergy_LeptonMom.at(i_e).back()->SetDirectory(0);
+
+      h_TrueEnergy_RecoEnergy_W_Smeared.at(i_e).back()->SetDirectory(0);
+      h_TrueEnergy_RecoEnergy_Angle_Smeared.at(i_e).back()->SetDirectory(0);
+      h_TrueEnergy_RecoEnergy_MissingE_Smeared.at(i_e).back()->SetDirectory(0);
+      h_TrueEnergy_RecoEnergy_Neutrons_Smeared.at(i_e).back()->SetDirectory(0);
+      h_TrueEnergy_RecoEnergy_LeptonMom_Smeared.at(i_e).back()->SetDirectory(0);
     }
 
     int target_nu_pdg = 14;
@@ -94,6 +115,7 @@ void MakeResponseMatrices(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
+      //if(ievent > 20000) break;
       if(ievent % 20000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -117,6 +139,14 @@ void MakeResponseMatrices(){
         h_TrueEnergy_RecoEnergy_LeptonMom.at(i_e).back()->Fill(nu_e,est_nu_e->at(i_e),lepton_mom,weight); 
       }
 
+      for(int i_e=0;i_e<kMAX;i_e++){
+        h_TrueEnergy_RecoEnergy_W_Smeared.at(i_e).back()->Fill(nu_e,smeared_est_nu_e->at(i_e),W,weight); 
+        h_TrueEnergy_RecoEnergy_MissingE_Smeared.at(i_e).back()->Fill(nu_e,smeared_est_nu_e->at(i_e),missing_e,weight); 
+        h_TrueEnergy_RecoEnergy_Neutrons_Smeared.at(i_e).back()->Fill(nu_e,smeared_est_nu_e->at(i_e),neutrons,weight); 
+        h_TrueEnergy_RecoEnergy_Angle_Smeared.at(i_e).back()->Fill(nu_e,smeared_est_nu_e->at(i_e),angle,weight); 
+        h_TrueEnergy_RecoEnergy_LeptonMom_Smeared.at(i_e).back()->Fill(nu_e,smeared_est_nu_e->at(i_e),lepton_mom,weight); 
+      }
+
     }
 
     f->Close();
@@ -133,6 +163,12 @@ void MakeResponseMatrices(){
       h_TrueEnergy_RecoEnergy_MissingE.at(i_e).at(i_f)->Write();
       h_TrueEnergy_RecoEnergy_Neutrons.at(i_e).at(i_f)->Write();
       h_TrueEnergy_RecoEnergy_LeptonMom.at(i_e).at(i_f)->Write();
+
+      h_TrueEnergy_RecoEnergy_W_Smeared.at(i_e).at(i_f)->Write();
+      h_TrueEnergy_RecoEnergy_Angle_Smeared.at(i_e).at(i_f)->Write();
+      h_TrueEnergy_RecoEnergy_MissingE_Smeared.at(i_e).at(i_f)->Write();
+      h_TrueEnergy_RecoEnergy_Neutrons_Smeared.at(i_e).at(i_f)->Write();
+      h_TrueEnergy_RecoEnergy_LeptonMom_Smeared.at(i_e).at(i_f)->Write();
     }
   }
 
