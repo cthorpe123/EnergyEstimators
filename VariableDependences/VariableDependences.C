@@ -192,7 +192,8 @@ void VariableDependences(){
 
       for(size_t i_e=0;i_e<kMAX;i_e++){
 
-        if(var == "W" && i_e == kSFMethod) continue;
+        if(var == "W" && (i_e == kSFMethod || i_e == kMuonKinCCQE || i_e == kMuonKinDelta)) continue;
+
         std::string est = estimators_str.at(i_e);
 
         const TH3D* h = h_TrueEnergy_RecoEnergy.at(i_e).at(i_f).at(i_v);
@@ -306,7 +307,7 @@ void VariableDependences(){
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
-      if(var == "W" && i_e == kSFMethod) continue;
+      if(var == "W" && (i_e == kSFMethod || i_e == kMuonKinCCQE || i_e == kMuonKinDelta)) continue;
 
       std::string est = estimators_str.at(i_e);
 

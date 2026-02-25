@@ -18,6 +18,7 @@ double scale_nue = 1;
 void SensitivityPlots(){
 
   PlotSetup();
+  p_plot->SetBottomMargin(0.16);
 
   bool make_smear_plots = false;
 

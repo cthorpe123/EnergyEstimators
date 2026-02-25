@@ -6,6 +6,9 @@ TPad *p_plot = new TPad("p_plot","p_plot",0,0,1,0.85);
 TPad *p_legend = new TPad("p_legend","p_legend",0,0.85,1,1);
 TLegend* l = new TLegend(0.1,0.0,0.9,1.0);
 
+const std::vector<char const*> colors_hex = {"#1845fb","#ff5e02","#c91f16","#c849a9","#adad7d","#86c8dd","#578dff"};
+std::vector<int> colors;
+
 void PlotSetup(){
 
   p_legend->SetBottomMargin(0);
@@ -15,7 +18,7 @@ void PlotSetup(){
   p_plot->SetLeftMargin(0.1);
 
   l->SetBorderSize(0);
-  l->SetNColumns(3);
+  l->SetNColumns(4);
 
   p_legend->Draw();
   p_legend->cd();
@@ -24,9 +27,13 @@ void PlotSetup(){
   p_plot->Draw();
   p_plot->cd();
 
+  for(size_t i=0;i<colors_hex.size();i++) colors.push_back(TColor::GetColor(colors_hex.at(i)));
+
 }
 
 void SetAxisFonts(THStack* hs){
+
+   
 
   hs->GetXaxis()->SetTitleSize(0.05);
   hs->GetYaxis()->SetTitleSize(0.05);

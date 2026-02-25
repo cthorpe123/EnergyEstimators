@@ -6,7 +6,7 @@
 OscModel data_osc_model;
 OscModel fit_osc_model;
 
-bool makeloadsofplots = true;
+bool makeloadsofplots = false;
 
 void DeltaM2Plot(){
 

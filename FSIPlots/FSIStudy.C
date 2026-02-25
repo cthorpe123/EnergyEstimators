@@ -2,6 +2,7 @@
 #include "../Funcs/PlotSetup.h"
 #include "../Funcs/EnergyEstimatorFuncs.h"
 #include "TLorentzVector.h"
+#include "../Funcs/Smearing.h"
 
 void FSIStudy(){
 
@@ -26,6 +27,15 @@ void FSIStudy(){
   std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_NoFSI_Dense(kMAX,std::vector<TH2D*>());
   std::vector<std::vector<TH1D*>> h_Change(kMAX,std::vector<TH1D*>());
   std::vector<std::vector<TH1D*>> h_Change_Abs(kMAX,std::vector<TH1D*>());
+
+  std::vector<std::vector<TH1D*>> h_EnergyBias_Smeared(kMAX,std::vector<TH1D*>());
+  std::vector<std::vector<TH1D*>> h_EnergyBias_NoFSI_Smeared(kMAX,std::vector<TH1D*>());
+  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_Smeared(kMAX,std::vector<TH2D*>());
+  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_NoFSI_Smeared(kMAX,std::vector<TH2D*>());
+  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_Dense_Smeared(kMAX,std::vector<TH2D*>());
+  std::vector<std::vector<TH2D*>> h_TrueEnergy_RecoEnergy_NoFSI_Dense_Smeared(kMAX,std::vector<TH2D*>());
+  std::vector<std::vector<TH1D*>> h_Change_Smeared(kMAX,std::vector<TH1D*>());
+  std::vector<std::vector<TH1D*>> h_Change_Abs_Smeared(kMAX,std::vector<TH1D*>());
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -66,6 +76,15 @@ void FSIStudy(){
       h_TrueEnergy_RecoEnergy_NoFSI_Dense.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_NoFSI_Dense_"+est).c_str(),"",200,0.5,6.0,200,0.0,10.0));
       h_Change.at(i_e).push_back(new TH1D((generator+"_Change_"+est).c_str(),"",50,-0.1,0.1));
       h_Change_Abs.at(i_e).push_back(new TH1D((generator+"_Change_Abs_"+est).c_str(),"",50,0.0,0.2));
+
+      h_EnergyBias_Smeared.at(i_e).push_back(new TH1D((generator+"_EnergyBias_Smeared_"+est).c_str(),"",100,-1,1));
+      h_EnergyBias_NoFSI_Smeared.at(i_e).push_back(new TH1D((generator+"_EnergyBias_NoFSI_Smeared_"+est).c_str(),"",100,-1,1));
+      h_TrueEnergy_RecoEnergy_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared_"+est).c_str(),"",nbins,binning_a,200,0.0,10.0));
+      h_TrueEnergy_RecoEnergy_NoFSI_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_NoFSI_Smeared_"+est).c_str(),"",nbins,binning_a,200,0.0,10.0));
+      h_TrueEnergy_RecoEnergy_Dense_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Dense_Smeared_"+est).c_str(),"",200,0.5,6.0,200,0.0,10.0));
+      h_TrueEnergy_RecoEnergy_NoFSI_Dense_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_NoFSI_Dense_Smeared_"+est).c_str(),"",200,0.5,6.0,200,0.0,10.0));
+      h_Change_Smeared.at(i_e).push_back(new TH1D((generator+"_Change_Smeared_"+est).c_str(),"",50,-0.1,0.1));
+      h_Change_Abs_Smeared.at(i_e).push_back(new TH1D((generator+"_Change_Abs_Smeared_"+est).c_str(),"",50,0.0,0.2));
     }
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
@@ -78,26 +97,78 @@ void FSIStudy(){
 
       if(nu_pdg != 14 || ccnc != 1) continue;
 
+      int np = 0;
+      int npi = 0;
+      for(size_t i_p=0;i_p<pdg->size();i_p++){
+        if(pdg->at(i_p) == 2212 && p4->at(i_p).Vect().Mag() > 0.3) np++;
+        if(abs(pdg->at(i_p)) == 211 && p4->at(i_p).Vect().Mag() > 0.1) npi++;
+        if(pdg->at(i_p) == 111) npi++;
+      }
+
+      int np_nofsi = 0;
+      int npi_nofsi = 0;
+      for(size_t i_p=0;i_p<pdg_nofsi->size();i_p++){
+        if(pdg_nofsi->at(i_p) == 2212 && p4_nofsi->at(i_p).Vect().Mag() > 0.3) np_nofsi++;
+        if(abs(pdg_nofsi->at(i_p)) == 211 && p4_nofsi->at(i_p).Vect().Mag() > 0.1) npi_nofsi++;
+        if(pdg_nofsi->at(i_p) == 111) npi_nofsi++;
+      }
+
       std::vector<double> energies = GetEnergyEst(lepton_p4,pdg,p4);
       std::vector<double> energies_nofsi = GetEnergyEst(lepton_p4,pdg_nofsi,p4_nofsi);
 
+      // Calculate predictions with kinematic smearing 
+      TLorentzVector s_lepton_p4 = *lepton_p4;
+      smearing::smear_mom(s_lepton_p4,13);
+      std::vector<TLorentzVector> s_p4 = *p4;
+      for(int i=0;i<p4->size();i++) smearing::smear_mom(s_p4.at(i),pdg->at(i));
+      std::vector<double> smeared_est_nu_e = GetEnergyEst(&s_lepton_p4,pdg,&s_p4);
+      
+      TLorentzVector s_lepton_p4_nofsi = *lepton_p4;
+      smearing::smear_mom(s_lepton_p4_nofsi,13);
+      std::vector<TLorentzVector> s_p4_nofsi = *p4_nofsi;
+      for(int i=0;i<p4_nofsi->size();i++) smearing::smear_mom(s_p4_nofsi.at(i),pdg_nofsi->at(i));
+      std::vector<double> smeared_est_nu_e_nofsi = GetEnergyEst(&s_lepton_p4_nofsi,pdg_nofsi,&s_p4_nofsi);
+
       for(int i_e=0;i_e<kMAX;i_e++){
+
         double nu_e_reco = energies.at(i_e);
         double nu_e_reco_nofsi = energies_nofsi.at(i_e);
+
+        double nu_e_reco_smeared = smeared_est_nu_e.at(i_e);
+        double nu_e_reco_nofsi_smeared = smeared_est_nu_e_nofsi.at(i_e);
+
         if(nu_e_reco > 0){
           h_EnergyBias.at(i_e).at(i_f)->Fill((nu_e_reco-nu_e)/nu_e,weight);  
           h_TrueEnergy_RecoEnergy.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco,weight); 
           h_TrueEnergy_RecoEnergy_Dense.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco,weight); 
         }
+
         if(nu_e_reco_nofsi > 0){
           h_EnergyBias_NoFSI.at(i_e).at(i_f)->Fill((nu_e_reco_nofsi-nu_e)/nu_e,weight);  
           h_TrueEnergy_RecoEnergy_NoFSI.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_nofsi,weight); 
           h_TrueEnergy_RecoEnergy_NoFSI_Dense.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_nofsi,weight); 
         }
 
+        if(nu_e_reco_smeared > 0){
+          h_EnergyBias_Smeared.at(i_e).at(i_f)->Fill((nu_e_reco_smeared-nu_e)/nu_e,weight);  
+          h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_smeared,weight); 
+          h_TrueEnergy_RecoEnergy_Dense_Smeared.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_smeared,weight); 
+        }
+
+        if(nu_e_reco_nofsi_smeared > 0){
+          h_EnergyBias_NoFSI_Smeared.at(i_e).at(i_f)->Fill((nu_e_reco_nofsi_smeared-nu_e)/nu_e,weight);  
+          h_TrueEnergy_RecoEnergy_NoFSI_Smeared.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_nofsi_smeared,weight); 
+          h_TrueEnergy_RecoEnergy_NoFSI_Dense_Smeared.at(i_e).at(i_f)->Fill(nu_e,nu_e_reco_nofsi_smeared,weight); 
+        }
+
         if(nu_e_reco > 0 && nu_e_reco_nofsi > 0){
           h_Change.at(i_e).at(i_f)->Fill((nu_e_reco - nu_e_reco_nofsi)/nu_e_reco_nofsi,weight);
           h_Change_Abs.at(i_e).at(i_f)->Fill(abs(nu_e_reco - nu_e_reco_nofsi)/nu_e_reco_nofsi,weight);
+        }
+
+        if(nu_e_reco_smeared > 0 && nu_e_reco_nofsi_smeared > 0){
+          h_Change_Smeared.at(i_e).at(i_f)->Fill((nu_e_reco_smeared - nu_e_reco_nofsi_smeared)/nu_e_reco_nofsi_smeared,weight);
+          h_Change_Abs_Smeared.at(i_e).at(i_f)->Fill(abs(nu_e_reco_smeared - nu_e_reco_nofsi_smeared)/nu_e_reco_nofsi_smeared,weight);
         }
 
       }
@@ -116,6 +187,7 @@ void FSIStudy(){
       std::string gen = Generators_v.at(i_f);
 
       THStack* hs = new THStack("hs",";(_{}E_{est} - E_{true})/E_{true};");
+      THStack* hs_Smeared = new THStack("hs_Smeared",";(_{}E_{est} - E_{true})/E_{true};");
 
       TH1D* h = h_EnergyBias.at(i_e).at(i_f);
       h->SetLineWidth(2);
@@ -129,16 +201,33 @@ void FSIStudy(){
       l->AddEntry(h_nofsi,"No FSI","L");
       hs->Add(h_nofsi);
 
+      TH1D* h_Smeared = h_EnergyBias_Smeared.at(i_e).at(i_f);
+      h_Smeared->SetLineWidth(2);
+      h_Smeared->SetLineColor(1);
+      hs_Smeared->Add(h_Smeared);
+
+      TH1D* h_nofsi_Smeared = h_EnergyBias_NoFSI_Smeared.at(i_e).at(i_f);
+      h_nofsi_Smeared->SetLineWidth(2);
+      h_nofsi_Smeared->SetLineColor(2);
+      hs_Smeared->Add(h_nofsi_Smeared);
+
       hs->Draw("HIST nostack");
       SetAxisFonts(hs);
       c->Print(("Plots/BiasShape_"+ est + "_" + gen + ".pdf").c_str());
       p_plot->Clear();
-      l->Clear();
 
+      hs_Smeared->Draw("HIST nostack");
+      SetAxisFonts(hs_Smeared);
+      c->Print(("Plots/BiasShape_"+ est + "_" + gen + "_Smeared.pdf").c_str());
+      p_plot->Clear();
+
+      l->Clear();
       delete hs;
+      delete hs_Smeared;
 
     }
   }
+
 
   // calculate bias and variance afo neutrino energy with and without FSI
 
@@ -147,8 +236,12 @@ void FSIStudy(){
     std::string gen = Generators_v.at(i_f);
     THStack* hs_Bias = new THStack(("hs_Bias"+gen).c_str(),";True Neutrino Energy (GeV);Frac. Bias");
     THStack* hs_Variance = new THStack(("hs_Variance"+gen).c_str(),";True Neutrino Energy (GeV);Frac. Variance");
+    THStack* hs_Bias_Smeared = new THStack(("hs_Bias_Smeared"+gen).c_str(),";True Neutrino Energy (GeV);Frac. Bias");
+    THStack* hs_Variance_Smeared = new THStack(("hs_Variance_Smeared"+gen).c_str(),";True Neutrino Energy (GeV);Frac. Variance");
     std::vector<TH1D*> h_Bias;
     std::vector<TH1D*> h_Variance;
+    std::vector<TH1D*> h_Bias_Smeared;
+    std::vector<TH1D*> h_Variance_Smeared;
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -159,15 +252,29 @@ void FSIStudy(){
       h_Variance.push_back(new TH1D(("h_Variance_"+gen+"_"+est).c_str(),"",nbins,binning_a));
       GetBiasVariance(h,h_Bias.back(),h_Variance.back()); 
 
+      TH2D* h_Smeared = h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f); 
+      h_Bias_Smeared.push_back(new TH1D(("h_Bias_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a));
+      h_Variance_Smeared.push_back(new TH1D(("h_Variance_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a));
+      GetBiasVariance(h_Smeared,h_Bias_Smeared.back(),h_Variance_Smeared.back()); 
+
       h_Bias.back()->SetLineWidth(2);
       h_Bias.back()->SetLineColor(colors.at(i_e));
       hs_Bias->Add(h_Bias.back());
       l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L"); 
 
+      h_Bias_Smeared.back()->SetLineWidth(2);
+      h_Bias_Smeared.back()->SetLineColor(colors.at(i_e));
+      hs_Bias_Smeared->Add(h_Bias_Smeared.back());
+
       if(i_e != kMuonKin){
         h_Variance.back()->SetLineWidth(2);
         h_Variance.back()->SetLineColor(colors.at(i_e));
         hs_Variance->Add(h_Variance.back());
+
+        h_Variance_Smeared.back()->SetLineWidth(2);
+        h_Variance_Smeared.back()->SetLineColor(colors.at(i_e));
+        hs_Variance_Smeared->Add(h_Variance_Smeared.back());
+
       }
 
       TH2D* h_nofsi = h_TrueEnergy_RecoEnergy_NoFSI.at(i_e).at(i_f); 
@@ -175,16 +282,31 @@ void FSIStudy(){
       h_Variance.push_back(new TH1D(("h_Variance_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a));
       GetBiasVariance(h_nofsi,h_Bias.back(),h_Variance.back()); 
 
+      TH2D* h_nofsi_Smeared = h_TrueEnergy_RecoEnergy_NoFSI_Smeared.at(i_e).at(i_f); 
+      h_Bias_Smeared.push_back(new TH1D(("h_Bias_NoFSI_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a));
+      h_Variance_Smeared.push_back(new TH1D(("h_Variance_NoFSI_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a));
+      GetBiasVariance(h_nofsi_Smeared,h_Bias_Smeared.back(),h_Variance_Smeared.back()); 
+
       h_Bias.back()->SetLineWidth(2);
       h_Bias.back()->SetLineColor(colors.at(i_e));
       h_Bias.back()->SetLineStyle(9);
       hs_Bias->Add(h_Bias.back());
+
+      h_Bias_Smeared.back()->SetLineWidth(2);
+      h_Bias_Smeared.back()->SetLineColor(colors.at(i_e));
+      h_Bias_Smeared.back()->SetLineStyle(9);
+      hs_Bias_Smeared->Add(h_Bias_Smeared.back());
 
       if(i_e != kMuonKin){
         h_Variance.back()->SetLineWidth(2);
         h_Variance.back()->SetLineColor(colors.at(i_e));
         h_Variance.back()->SetLineStyle(9);
         hs_Variance->Add(h_Variance.back());
+
+        h_Variance_Smeared.back()->SetLineWidth(2);
+        h_Variance_Smeared.back()->SetLineColor(colors.at(i_e));
+        h_Variance_Smeared.back()->SetLineStyle(9);
+        hs_Variance_Smeared->Add(h_Variance_Smeared.back());
       }
 
     }
@@ -196,25 +318,44 @@ void FSIStudy(){
     c->Print(("Plots/Bias_"+gen+".pdf").c_str());
     p_plot->Clear();
 
+    hs_Bias_Smeared->Draw("HIST nostack");
+    SetAxisFonts(hs_Bias_Smeared);
+    hs_Bias_Smeared->SetMinimum(-0.35);
+    hs_Bias_Smeared->SetMaximum(0.055);
+    c->Print(("Plots/Bias_"+gen+"_Smeared.pdf").c_str());
+    p_plot->Clear();
+
     // Reset the legend and regenerate without the CCQE like
     l->Clear();
     for(size_t i_e=0;i_e<kMAX;i_e++)
       if(i_e != kMuonKin) l->AddEntry(h_Bias.back(),estimators_leg.at(i_e).c_str(),"L"); 
      
-
     hs_Variance->Draw("HIST nostack");
     SetAxisFonts(hs_Variance);
     c->Print(("Plots/Variance_"+gen+".pdf").c_str());
     p_plot->Clear();
 
+    hs_Variance_Smeared->Draw("HIST nostack");
+    SetAxisFonts(hs_Variance_Smeared);
+    c->Print(("Plots/Variance_"+gen+"_Smeared.pdf").c_str());
+    p_plot->Clear();
+
     l->Clear();
     delete hs_Bias;
     delete hs_Variance;       
+    delete hs_Bias_Smeared;
+    delete hs_Variance_Smeared;       
 
 
-     // Calculate the change in bias/variance when switching off FSI 
+
+
+
+    // Calculate the change in bias/variance when switching off FSI 
     THStack* hs_Bias_Change = new THStack(("hs_Bias_Change_"+gen).c_str(),";True Neutrino Energy (GeV);Change in Frac. Bias");
     THStack* hs_Variance_Change = new THStack(("hs_Variance_Change_"+gen).c_str(),";True Neutrino Energy (GeV);Change Frac. Variance");
+
+    THStack* hs_Bias_Change_Smeared = new THStack(("hs_Bias_Change_Smeared_"+gen).c_str(),";True Neutrino Energy (GeV);Change in Frac. Bias");
+    THStack* hs_Variance_Change_Smeared = new THStack(("hs_Variance_Change_Smeared_"+gen).c_str(),";True Neutrino Energy (GeV);Change Frac. Variance");
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -226,10 +367,20 @@ void FSIStudy(){
       hs_Bias_Change->Add(h_bias);
       l->AddEntry(h_bias,estimators_leg.at(i_e).c_str(),"L"); 
 
+      TH1D* h_bias_Smeared = h_Bias_Smeared.at(2*i_e);
+      TH1D* h_bias_nofsi_Smeared = h_Bias_Smeared.at(2*i_e+1);
+      h_bias_Smeared->Add(h_bias_nofsi_Smeared,-1);
+      hs_Bias_Change_Smeared->Add(h_bias_Smeared);
+
       TH1D* h_variance = h_Variance.at(2*i_e);
       TH1D* h_variance_nofsi = h_Variance.at(2*i_e+1);
       h_variance->Add(h_variance_nofsi,-1);
       hs_Variance_Change->Add(h_variance);
+
+      TH1D* h_variance_Smeared = h_Variance_Smeared.at(2*i_e);
+      TH1D* h_variance_nofsi_Smeared = h_Variance_Smeared.at(2*i_e+1);
+      h_variance_Smeared->Add(h_variance_nofsi_Smeared,-1);
+      hs_Variance_Change_Smeared->Add(h_variance_Smeared);
 
     }
 
@@ -240,30 +391,46 @@ void FSIStudy(){
     c->Print(("Plots/Bias_Change_"+gen+".pdf").c_str());
     p_plot->Clear();
 
+    hs_Bias_Change_Smeared->Draw("HIST nostack");
+    SetAxisFonts(hs_Bias_Change_Smeared);
+    hs_Bias_Change_Smeared->SetMinimum(-0.1);
+    hs_Bias_Change_Smeared->SetMaximum(0.022);
+    c->Print(("Plots/Bias_Change_"+gen+"_Smeared.pdf").c_str());
+    p_plot->Clear();
+
     hs_Variance_Change->Draw("HIST nostack");
     SetAxisFonts(hs_Variance_Change);
     c->Print(("Plots/Variance_Change_"+gen+".pdf").c_str());
     p_plot->Clear();
 
+    hs_Variance_Change_Smeared->Draw("HIST nostack");
+    SetAxisFonts(hs_Variance_Change_Smeared);
+    c->Print(("Plots/Variance_Change_"+gen+"_Smeared.pdf").c_str());
+    p_plot->Clear();
 
     delete hs_Bias_Change;
     delete hs_Variance_Change;
 
-    h_Bias.clear();
-    h_Variance.clear();
+    delete hs_Bias_Change_Smeared;
+    delete hs_Variance_Change_Smeared;
+
+    h_Bias_Smeared.clear();
+    h_Variance_Smeared.clear();
     l->Clear();
 
   }
+
 
   // Calculate the change in the estimated energy from adding FSI
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
     std::string gen = Generators_v.at(i_f);
     THStack* hs_Change = new THStack(("hs_Change"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};");
+    THStack* hs_Change_Smeared = new THStack(("hs_Change_Smeared"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};");
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
-      if(i_e == kMuonKin) continue;
+      if(i_e == kMuonKin || i_e == kMuonKinCCQE) continue;
 
       std::string est = estimators_str.at(i_e);
       TH1D* h = h_Change.at(i_e).at(i_f); 
@@ -271,13 +438,27 @@ void FSIStudy(){
       h->SetLineWidth(2);
       h->SetLineColor(colors.at(i_e));
       hs_Change->Add(h);
+
+      TH1D* h_Smeared = h_Change_Smeared.at(i_e).at(i_f); 
+      h_Smeared->Scale(1.0/h_Smeared->Integral());
+      h_Smeared->SetLineWidth(2);
+      h_Smeared->SetLineColor(colors.at(i_e));
+      hs_Change_Smeared->Add(h_Smeared);
+
       l->AddEntry(h,estimators_leg.at(i_e).c_str(),"L"); 
+
     }
 
     hs_Change->Draw("nostack HIST");
     SetAxisFonts(hs_Change);
     c->Print(("Plots/Change_"+gen+".pdf").c_str()); 
     p_plot->Clear();
+
+    hs_Change_Smeared->Draw("nostack HIST");
+    SetAxisFonts(hs_Change_Smeared);
+    c->Print(("Plots/Change_"+gen+"_Smeared.pdf").c_str()); 
+    p_plot->Clear();
+
     l->Clear();
 
   }
@@ -288,10 +469,11 @@ void FSIStudy(){
 
     std::string gen = Generators_v.at(i_f);
     THStack* hs_Change_Abs = new THStack(("hs_Change_Abs"+gen).c_str(),";|_{}E_{est}^{FSI} - E_{est}^{No FSI}|/E_{est}^{No FSI};");
+    THStack* hs_Change_Abs_Smeared = new THStack(("hs_Change_Abs_Smeared_"+gen).c_str(),";|_{}E_{est}^{FSI} - E_{est}^{No FSI}|/E_{est}^{No FSI};");
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
-      if(i_e == kMuonKin) continue;
+      if(i_e == kMuonKin || i_e == kMuonKinCCQE) continue;
 
       std::string est = estimators_str.at(i_e);
       TH1D* h = h_Change_Abs.at(i_e).at(i_f); 
@@ -299,6 +481,13 @@ void FSIStudy(){
       h->SetLineWidth(2);
       h->SetLineColor(colors.at(i_e));
       hs_Change_Abs->Add(h);
+
+      TH1D* h_Smeared = h_Change_Abs_Smeared.at(i_e).at(i_f); 
+      h_Smeared->Scale(1.0/h_Smeared->Integral());
+      h_Smeared->SetLineWidth(2);
+      h_Smeared->SetLineColor(colors.at(i_e));
+      hs_Change_Abs_Smeared->Add(h_Smeared);
+
       l->AddEntry(h,estimators_leg.at(i_e).c_str(),"L"); 
     }
 
@@ -306,12 +495,18 @@ void FSIStudy(){
     SetAxisFonts(hs_Change_Abs);
     c->Print(("Plots/Change_Abs_"+gen+".pdf").c_str()); 
     p_plot->Clear();
+
+    hs_Change_Abs_Smeared->Draw("nostack HIST");
+    SetAxisFonts(hs_Change_Abs_Smeared);
+    c->Print(("Plots/Change_Abs_"+gen+"_Smeared.pdf").c_str()); 
+    p_plot->Clear();
+
     l->Clear();
 
   }
 
-
   std::vector<std::vector<TH1D*>> h_Ratio(kMAX);
+  std::vector<std::vector<TH1D*>> h_Ratio_Smeared(kMAX);
 
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
@@ -333,14 +528,28 @@ void FSIStudy(){
       TH1D* h_variance_nofsi = new TH1D(("h_Variance2_NoFSI_"+gen+"_"+est).c_str(),"",nbins,binning_a);
       GetBiasVariance(h_nofsi,h_bias_nofsi,h_variance_nofsi); 
 
+      TH2D* h_Smeared = h_TrueEnergy_RecoEnergy_Smeared.at(i_e).at(i_f); 
+      TH1D* h_bias_Smeared = new TH1D(("h_Bias2_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      TH1D* h_variance_Smeared = new TH1D(("h_Variance2_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      GetBiasVariance(h_Smeared,h_bias_Smeared,h_variance_Smeared); 
+
+      TH2D* h_nofsi_Smeared = h_TrueEnergy_RecoEnergy_NoFSI_Smeared.at(i_e).at(i_f); 
+      TH1D* h_bias_nofsi_Smeared = new TH1D(("h_Bias2_NoFSI_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      TH1D* h_variance_nofsi_Smeared = new TH1D(("h_Variance2_NoFSI_Smeared_"+gen+"_"+est).c_str(),"",nbins,binning_a);
+      GetBiasVariance(h_nofsi_Smeared,h_bias_nofsi_Smeared,h_variance_nofsi_Smeared); 
+
       h_Ratio.at(i_e).push_back(static_cast<TH1D*>(h_bias->Clone(("h_Ratio_"+est).c_str())));
       h_Ratio.at(i_e).back()->Add(h_bias_nofsi,-1);
+
+      h_Ratio_Smeared.at(i_e).push_back(static_cast<TH1D*>(h_bias_Smeared->Clone(("h_Ratio_Smeared_"+est).c_str())));
+      h_Ratio_Smeared.at(i_e).back()->Add(h_bias_nofsi_Smeared,-1);
 
     }
 
   }
 
   THStack* hs = new THStack("hs",";True Neutrino Energy (GeV);Frac. Bias No FSI - Frac. Bias FSI");
+  THStack* hs_Smeared = new THStack("hs_Smeared",";True Neutrino Energy (GeV);Frac. Bias No FSI - Frac. Bias FSI");
 
   for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -354,7 +563,12 @@ void FSIStudy(){
       h_Ratio.at(i_e).at(i_f)->SetLineColor(colors.at(i_e));
       h_Ratio.at(i_e).at(i_f)->SetLineStyle(i_f+1);
       hs->Add(h_Ratio.at(i_e).at(i_f));
-      //l->AddEntry(h_Ratio.at(i_e).at(i_f),Generators_v.at(i_f).c_str(),"L");
+
+      h_Ratio_Smeared.at(i_e).at(i_f)->SetLineWidth(2);
+      h_Ratio_Smeared.at(i_e).at(i_f)->SetLineColor(colors.at(i_e));
+      h_Ratio_Smeared.at(i_e).at(i_f)->SetLineStyle(i_f+1);
+      hs_Smeared->Add(h_Ratio_Smeared.at(i_e).at(i_f));
+
       l->AddEntry(h_Ratio.at(i_e).at(i_f),(estimators_leg.at(i_e)+" "+gen).c_str(),"L");
     }
 
@@ -364,86 +578,12 @@ void FSIStudy(){
   SetAxisFonts(hs);
   c->Print("Plots/Ratio.pdf"); 
   p_plot->Clear();
+
+  hs_Smeared->Draw("nostack HIST");
+  SetAxisFonts(hs_Smeared);
+  c->Print("Plots/Ratio_Smeared.pdf"); 
+  p_plot->Clear();
+
   l->Clear();
-
-
-  // Compare the energy spectra before and after applying FSI for the two generators
-
-  // Load the numu flux histogram
-  TFile* f_flux = TFile::Open("../Flux/DUNE_FD_Flux.root");
-  TH1D* h_flux = static_cast<TH1D*>(f_flux->Get("numu_flux"));
-  h_flux->SetDirectory(0);
-  f_flux->Close();
-  h_flux->Scale(1.0/h_flux->Integral());
-
-  for(size_t i_e=0;i_e<kMAX;i_e++){
-    std::string est = estimators_str.at(i_e);
-    if(i_e != kMuonKinWNP && i_e != kTotalEDep) continue;
-
-    THStack* hs = new THStack("hs",";E_{est} (GeV);Pred");
-    std::vector<TH1D*> h_v(InputFiles_v.size());
-    std::vector<TH1D*> h_nofsi_v(InputFiles_v.size());
-
-    for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
-
-      std::string gen = Generators_v.at(i_f);
-
-      TH2D* h = static_cast<TH2D*>(h_TrueEnergy_RecoEnergy_Dense.at(i_e).at(i_f)->Clone(("res_"+gen+"_"+est).c_str())); 
-      TH2D* h_nofsi = static_cast<TH2D*>(h_TrueEnergy_RecoEnergy_NoFSI_Dense.at(i_e).at(i_f)->Clone(("res_nofsi_"+gen+"_"+est).c_str())); 
-
-      Normalise(h);
-      Normalise(h_nofsi); 
-
-      // Fold the 2D plot into a 1D plot
-      h_v.at(i_f) = new TH1D(("h_reco_"+gen+"_"+est).c_str(),";E_{est} (GeV);Events",200,0.2,8.0); 
-      for(int j=1;j<h_v.at(i_f)->GetNbinsX()+1;j++){
-        double events = 0.0;
-        for(int i=1;i<h->GetNbinsX()+1;i++){
-          double flux = h_flux->GetBinContent(h_flux->FindBin(h->GetXaxis()->GetBinCenter(i)));
-          double E = h->GetXaxis()->GetBinCenter(i);
-          events += h->GetBinContent(i,j)*flux;
-        }
-        h_v.at(i_f)->SetBinContent(j,events);
-      }
-
-      h_nofsi_v.at(i_f) = new TH1D(("h_reco_nofsi_"+gen+"_"+est).c_str(),";E_{est} (GeV);Events",200,0.2,8.0); 
-      for(int j=1;j<h_nofsi_v.at(i_f)->GetNbinsX()+1;j++){
-        double events = 0.0;
-        for(int i=1;i<h_nofsi->GetNbinsX()+1;i++){
-          double flux = h_flux->GetBinContent(h_flux->FindBin(h_nofsi->GetXaxis()->GetBinCenter(i)));
-          double E = h_nofsi->GetXaxis()->GetBinCenter(i);
-          events += h_nofsi->GetBinContent(i,j)*flux;
-        }
-        h_nofsi_v.at(i_f)->SetBinContent(j,events);
-      }
-
-      h_v.at(i_f)->Rebin();
-      h_nofsi_v.at(i_f)->Rebin();
-
-      h_v.at(i_f)->SetLineWidth(2);
-      h_v.at(i_f)->SetLineColor(i_f+1);
-
-      h_nofsi_v.at(i_f)->SetLineWidth(2);
-      h_nofsi_v.at(i_f)->SetLineColor(i_f+1);
-      h_nofsi_v.at(i_f)->SetLineStyle(9);
-
-      hs->Add(h_v.at(i_f));
-      hs->Add(h_nofsi_v.at(i_f));
-
-      l->AddEntry(h_v.at(i_f),(gen+"").c_str(),"L");
-      l->AddEntry(h_nofsi_v.at(i_f),(gen+" No FSI").c_str(),"L");
-
-    }
-
-    hs->Draw("nostack HIST");
-    SetAxisFonts(hs);
-
-    c->Print(("Plots/Spectrum_"+est+".pdf").c_str()); 
-    p_plot->Clear();
-    l->Clear();
-
-    delete hs;
-
-  }
 
 }

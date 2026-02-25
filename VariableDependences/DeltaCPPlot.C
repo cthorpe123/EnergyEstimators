@@ -3,7 +3,7 @@
 #include "../Funcs/OscFitter.h"
 #include "../Funcs/PlotSetup.h"
 
-bool makeloadsofplots = true;
+bool makeloadsofplots = false;
 
 OscModel data_osc_model;
 OscModel fit_osc_model;
@@ -119,150 +119,157 @@ void DeltaCPPlot(){
   h_flux->Scale(1.0/h_flux->Integral());
 
   std::string var = "Angle";
+  //bool smeared = true;
 
   TFile* f = TFile::Open("ResponseMatricesNue.root");
 
-  std::vector<double> true_deltaCP_v = {0,3.14/2,-3.14/2};
-  std::vector<std::string> labels = {"Zero","Plus","Minus"};
+  for(bool smeared : {false,true}){
 
-  gSystem->Exec(("mkdir -p Plots/" + var).c_str());
+    std::vector<double> true_deltaCP_v = {0,3.14/2,-3.14/2};
+    std::vector<std::string> labels = {"Zero","Plus","Minus"};
 
-  for(size_t i_dcp=0;i_dcp<true_deltaCP_v.size();i_dcp++){
+    gSystem->Exec(("mkdir -p Plots/" + var).c_str());
+    std::string s = smeared ? "_Smeared" : "";
 
-    double true_deltaCP = true_deltaCP_v.at(i_dcp);
+    for(size_t i_dcp=0;i_dcp<true_deltaCP_v.size();i_dcp++){
 
-    for(size_t i_f=0;i_f<Generators_v.size();i_f++){
+      double true_deltaCP = true_deltaCP_v.at(i_dcp);
 
-      std::string gen = Generators_v.at(i_f);    
+      for(size_t i_f=0;i_f<Generators_v.size();i_f++){
 
-      double min_fit_ratio = 0;
-      double max_fit_ratio = 0;
+        std::string gen = Generators_v.at(i_f);    
 
-      //std::vector<TH1D*> h_fit_results;
-      std::vector<TGraph*> g_fit_results(kMAX);
+        double min_fit_ratio = 0;
+        double max_fit_ratio = 0;
 
-      std::string axis_title; 
-      for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+        //std::vector<TH1D*> h_fit_results;
+        std::vector<TGraph*> g_fit_results(kMAX);
 
-        if(var == "W" && i_e == kSFMethod) continue;
+        std::string axis_title; 
+        for(size_t i_e=0;i_e<estimators_str.size();i_e++){
 
-        std::string est = estimators_str.at(i_e);
-        std::cout << "Doing fitting with generator " << gen << " estimator " << est << std::endl;
+          if(var == "W" && (i_e == kSFMethod || i_e == kMuonKinCCQE || i_e == kMuonKinDelta)) continue;
 
-        TH3D* h = static_cast<TH3D*>(f->Get((gen+"_TrueEnergy_RecoEnergy_"+var+"_"+est).c_str())); 
-        //h->RebinX();
-        //h->RebinY();
-        //if(var != "Neutrons") h->RebinZ();
+          std::string est = estimators_str.at(i_e);
+          std::cout << "Doing fitting with generator " << gen << " estimator " << est << std::endl;
 
-        TH1D* h_fit_results = h->ProjectionZ();
-        std::vector<Double_t> x_fit_results;
-        std::vector<Double_t> y_fit_results;
+          TH3D* h = static_cast<TH3D*>(f->Get((gen+"_TrueEnergy_RecoEnergy_"+var+s+"_"+est).c_str())); 
+          //h->RebinX();
+          //h->RebinY();
+          //if(var != "Neutrons") h->RebinZ();
 
-        //h_fit_results.push_back(h->ProjectionZ());
-        //h_fit_results.back()->Reset();
-        axis_title = h->GetZaxis()->GetTitle();
+          TH1D* h_fit_results = h->ProjectionZ();
+          std::vector<Double_t> x_fit_results;
+          std::vector<Double_t> y_fit_results;
 
-        //int low_x_bin = h->FindBin(true_e_range.first);
-        //int high_x_bin = h->FindBin(true_e_range.second);
-        //h->GetXaxis()->SetRange(low_x_bin,high_x_bin);
+          //h_fit_results.push_back(h->ProjectionZ());
+          //h_fit_results.back()->Reset();
+          axis_title = h->GetZaxis()->GetTitle();
 
-        double last_meas_deltaCP = true_deltaCP;
-        for(int i_dm=1;i_dm<h_fit_results->GetNbinsX()+1;i_dm++){
+          //int low_x_bin = h->FindBin(true_e_range.first);
+          //int high_x_bin = h->FindBin(true_e_range.second);
+          //h->GetXaxis()->SetRange(low_x_bin,high_x_bin);
 
-          //if(i_e == kSFMethod /*|| i_e == kMuonKin*/) continue;
+          double last_meas_deltaCP = true_deltaCP;
+          for(int i_dm=1;i_dm<h_fit_results->GetNbinsX()+1;i_dm++){
 
-          // Pick a slice in the 3rd vairbale to fit
-          h->GetZaxis()->SetRange(1,h->GetNbinsZ()); 
-          TH2D* h_data_true_reco =  static_cast<TH2D*>(h->Project3D("yx")->Clone("h_data_true_reco")); 
-          h->GetZaxis()->SetRange(1,i_dm); 
-          TH2D* h_model_true_reco =  static_cast<TH2D*>(h->Project3D("yx")->Clone("h_model_true_reco")); 
+            //if(i_e == kSFMethod /*|| i_e == kMuonKin*/) continue;
 
-          int nbins = h_data_true_reco->GetNbinsY();
-          double low = h_data_true_reco->GetYaxis()->GetBinLowEdge(1);
-          double high = h_data_true_reco->GetYaxis()->GetBinLowEdge(nbins+1);
-          TH1D* h_data_reco = new TH1D("h_data_reco",";E_{est} (GeV);Events",nbins,low,high); 
-          TH1D* h_model_reco = new TH1D("h_model_reco","E_{est} (GeV)",nbins,low,high);
-          TH1D* h_model_reco_prefit = new TH1D("h_model_reco_prefit","E_{est} (GeV)",nbins,low,high);
+            // Pick a slice in the 3rd vairbale to fit
+            h->GetZaxis()->SetRange(1,h->GetNbinsZ()); 
+            TH2D* h_data_true_reco =  static_cast<TH2D*>(h->Project3D("yx")->Clone("h_data_true_reco")); 
+            h->GetZaxis()->SetRange(1,i_dm); 
+            TH2D* h_model_true_reco =  static_cast<TH2D*>(h->Project3D("yx")->Clone("h_model_true_reco")); 
 
-          double meas_deltaCP = last_meas_deltaCP;
-          bool fit = DoFit(h_flux,h_data_true_reco,h_model_true_reco,h_data_reco,h_model_reco,h_model_reco_prefit,true_deltaCP,meas_deltaCP);
+            int nbins = h_data_true_reco->GetNbinsY();
+            double low = h_data_true_reco->GetYaxis()->GetBinLowEdge(1);
+            double high = h_data_true_reco->GetYaxis()->GetBinLowEdge(nbins+1);
+            TH1D* h_data_reco = new TH1D("h_data_reco",";E_{est} (GeV);Events",nbins,low,high); 
+            TH1D* h_model_reco = new TH1D("h_model_reco","E_{est} (GeV)",nbins,low,high);
+            TH1D* h_model_reco_prefit = new TH1D("h_model_reco_prefit","E_{est} (GeV)",nbins,low,high);
 
-          if(makeloadsofplots){
-            gSystem->Exec(("mkdir -p Plots/" + var + "/FitPlots/" + gen + "/" + est + "/").c_str());
-            h_data_reco->Draw("HIST");
-            h_data_reco->SetLineColor(1);
-            h_data_reco->SetLineWidth(2);
-            h_data_reco->SetStats(0);
-            h_model_reco->Draw("HIST same");
-            h_model_reco->SetLineColor(2);
-            h_model_reco->SetLineWidth(2);
-            h_model_reco_prefit->Draw("HIST same");
-            h_model_reco_prefit->SetLineColor(3);
-            h_model_reco_prefit->SetLineWidth(2);
-            //h_data_reco->SetTitle(("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str());
-            l->AddEntry(h_data_reco,(gen+" FD").c_str(),"L");
-            l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
-            l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
-            l->AddEntry((TObject*)0,("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str(),"");
-            c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + std::to_string(i_dm) + "_" + gen + "_" + est +".pdf").c_str());
-            p_plot->Clear();
-            l->Clear();
-          } 
+            double meas_deltaCP = last_meas_deltaCP;
+            bool fit = DoFit(h_flux,h_data_true_reco,h_model_true_reco,h_data_reco,h_model_reco,h_model_reco_prefit,true_deltaCP,meas_deltaCP);
 
-          delete h_data_reco;
-          delete h_model_reco;
-          delete h_model_reco_prefit;
+            if(makeloadsofplots){
+              gSystem->Exec(("mkdir -p Plots/" + var + "/FitPlots/" + gen + "/" + est + "/").c_str());
+              h_data_reco->Draw("HIST");
+              h_data_reco->SetLineColor(1);
+              h_data_reco->SetLineWidth(2);
+              h_data_reco->SetStats(0);
+              h_model_reco->Draw("HIST same");
+              h_model_reco->SetLineColor(2);
+              h_model_reco->SetLineWidth(2);
+              h_model_reco_prefit->Draw("HIST same");
+              h_model_reco_prefit->SetLineColor(3);
+              h_model_reco_prefit->SetLineWidth(2);
+              //h_data_reco->SetTitle(("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str());
+              l->AddEntry(h_data_reco,(gen+" FD").c_str(),"L");
+              l->AddEntry(h_model_reco_prefit,(gen+" Model, No Fit").c_str(),"L");
+              l->AddEntry(h_model_reco,(gen+" Model, Fitted").c_str(),"L");
+              l->AddEntry((TObject*)0,("Input #delta_{CP}="+std::to_string(true_deltaCP)+" Measured #delta_{CP}="+std::to_string(meas_deltaCP)).c_str(),"");
+              c->Print(("Plots/" + var + "/FitPlots/" + gen + "/" + est + "/" + "Point_" + std::to_string(i_dm) + "_" + gen + s + "_" + est +".pdf").c_str());
+              p_plot->Clear();
+              l->Clear();
+            } 
 
-          if(fit){
-            //h_fit_results.back()->SetBinContent(i_dm,meas_deltaCP - true_deltaCP);
-            x_fit_results.push_back(h_fit_results->GetBinCenter(i_dm));
-            y_fit_results.push_back(meas_deltaCP - true_deltaCP);
-            min_fit_ratio = std::min(min_fit_ratio,meas_deltaCP - true_deltaCP);
-            max_fit_ratio = std::max(max_fit_ratio,meas_deltaCP - true_deltaCP);
-            last_meas_deltaCP = meas_deltaCP;
+            delete h_data_reco;
+            delete h_model_reco;
+            delete h_model_reco_prefit;
+
+            if(fit){
+              //h_fit_results.back()->SetBinContent(i_dm,meas_deltaCP - true_deltaCP);
+              x_fit_results.push_back(h_fit_results->GetBinCenter(i_dm));
+              y_fit_results.push_back(meas_deltaCP - true_deltaCP);
+              min_fit_ratio = std::min(min_fit_ratio,meas_deltaCP - true_deltaCP);
+              max_fit_ratio = std::max(max_fit_ratio,meas_deltaCP - true_deltaCP);
+              last_meas_deltaCP = meas_deltaCP;
+            }
+
           }
+
+          g_fit_results.at(i_e) = new TGraph(x_fit_results.size(),&(x_fit_results[0]),&(y_fit_results[0]));
+
+          delete h_fit_results;
+          delete h;
 
         }
 
-        g_fit_results.at(i_e) = new TGraph(x_fit_results.size(),&(x_fit_results[0]),&(y_fit_results[0]));
+        std::string title = ";Cut on "+axis_title+"Measured #delta_{CP} - Input #delta_{CP} (rad)";
+        //THStack* hs = new THStack("hs",title.c_str());     
+        TMultiGraph* mg = new TMultiGraph("mg",title.c_str());
 
-        delete h_fit_results;
-        delete h;
+        TF1* f_line = new TF1("f_line","0",-1000,1000);
+        f_line->SetLineColor(1);  
+        f_line->SetLineWidth(2);
+        f_line->SetLineStyle(9);
+
+        for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+          if(var == "W" && (i_e == kSFMethod || i_e == kMuonKinCCQE || i_e == kMuonKinDelta)) continue;
+          g_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
+          g_fit_results.at(i_e)->SetLineWidth(2); 
+          mg->Add(g_fit_results.at(i_e));
+          l->AddEntry(g_fit_results.at(i_e),estimators_leg.at(i_e).c_str(),"L");
+        }
+
+        mg->Draw("AL"); 
+        mg->GetYaxis()->SetRangeUser(std::min(-0.05,min_fit_ratio),std::max(0.05,max_fit_ratio));
+        f_line->Draw("L same");
+        SetAxisFontsMG(mg);
+
+        c->Print(("Plots/"+var+"/"+"DeltaCPFitResults_"+labels.at(i_dcp)+"_"+gen+s+".pdf").c_str());
+        p_plot->Clear();
+        l->Clear();
+
+        delete mg;
+        delete f_line;
 
       }
-
-      std::string title = ";Cut on "+axis_title+"Measured #delta_{CP} - Input #delta_{CP} (rad)";
-      //THStack* hs = new THStack("hs",title.c_str());     
-      TMultiGraph* mg = new TMultiGraph("mg",title.c_str());
-
-      TF1* f_line = new TF1("f_line","0",-1000,1000);
-      f_line->SetLineColor(1);  
-      f_line->SetLineWidth(2);
-      f_line->SetLineStyle(9);
-
-      for(size_t i_e=0;i_e<estimators_str.size();i_e++){
-        if(var == "W" && i_e == kSFMethod) continue;
-        g_fit_results.at(i_e)->SetLineColor(colors.at(i_e)); 
-        g_fit_results.at(i_e)->SetLineWidth(2); 
-        mg->Add(g_fit_results.at(i_e));
-        l->AddEntry(g_fit_results.at(i_e),estimators_leg.at(i_e).c_str(),"L");
-      }
-
-      mg->Draw("AL"); 
-      mg->GetYaxis()->SetRangeUser(std::min(-0.05,min_fit_ratio),std::max(0.05,max_fit_ratio));
-      f_line->Draw("L same");
-      SetAxisFontsMG(mg);
-      
-      c->Print(("Plots/"+var+"/"+"DeltaCPFitResults_"+labels.at(i_dcp)+"_"+gen+".pdf").c_str());
-      p_plot->Clear();
-      l->Clear();
-
-      delete mg;
-      delete f_line;
 
     }
 
   }
+
 
 }
 

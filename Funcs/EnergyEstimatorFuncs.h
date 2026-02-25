@@ -111,7 +111,7 @@ std::vector<TVector3> GetNeutronMom(const std::vector<int>* pdg_v,const std::vec
 enum estimators { kMuonKin , kMuonKinWNP , kPeLEELike0Pi , kSFMethod , kMuonKinDelta , kMuonKinCCQE , kTotalEDep , kMAX };
 const std::vector<std::string> estimators_str = { "MuonKin" , "MuonKinWNP" , "PeLEELike0Pi"  , "SFMethod" , "MuonKinDelta" , "MuonKinCCQE", "TotalEDep"  };
 const std::vector<std::string> estimators_leg = { "CCQE-like" , "W^{2}" , "Proton-Based" , "SF" , "CCQE-like #Delta Corr" , "CCQE-like 1p" , "Calorimetric"};
-const std::vector<int> colors = {kCyan+2,kBlue,kRed,kGreen+1,kBlue-9,kRed-9,kMagenta};
+//const std::vector<int> colors = {kCyan+2,kBlue,kRed,kGreen+1,kBlue-9,kRed-9,kMagenta};
 
 double T2KEnergy(const TLorentzVector* plepton){
   return (Mp*Mp - (Mn - Eb)*(Mn - Eb) - plepton->M()*plepton->M() + 2*(Mn - Eb)*plepton->E())/(2*(Mn - Eb - plepton->E() + plepton->P()*plepton->Vect().CosTheta()));
