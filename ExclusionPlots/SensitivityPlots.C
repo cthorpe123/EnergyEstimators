@@ -17,10 +17,13 @@ double scale_nue = 1;
 
 void SensitivityPlots(){
 
+  gSystem->Exec("mkdir -p Plots/");
+
   PlotSetup();
   p_plot->SetBottomMargin(0.16);
 
   bool make_smear_plots = false;
+  bool draw_chi2_plots = true;
 
   std::vector<std::string> Generators_v = {"GENIE","NuWro","NEUT","GiBUU"};
 
@@ -56,6 +59,11 @@ void SensitivityPlots(){
       h_RecoEnergy_DeltaCP_Minus.at(i_e).push_back(static_cast<TH1D*>(f_in_nue->Get((generator+"_"+name+"_DeltaCP_Minus_"+estimator).c_str())));
     }
   }  
+
+  std::vector<std::vector<TH1D*>> h_chi2_deltam2_plus_v(Generators_v.size(),std::vector<TH1D*>(kMAX));
+  std::vector<std::vector<TH1D*>> h_chi2_deltacp_plus_v(Generators_v.size(),std::vector<TH1D*>(kMAX));
+  std::vector<std::vector<TH1D*>> h_chi2_deltam2_minus_v(Generators_v.size(),std::vector<TH1D*>(kMAX));
+  std::vector<std::vector<TH1D*>> h_chi2_deltacp_minus_v(Generators_v.size(),std::vector<TH1D*>(kMAX));
 
   // Calculate chi2 w.r.t no delta CP as a function of exposure
   for(size_t i_e=0;i_e<estimators_str.size();i_e++){
@@ -97,16 +105,47 @@ void SensitivityPlots(){
         h_deltam2_minus->SetBinError(i,sqrt(h_deltam2_minus->GetBinContent(i)));
       }
 
+      TH1D* h_deltacp_plus_chi2 = (TH1D*)h_deltacp_plus->Clone("h_deltacp_plus_chi2");
+      TH1D* h_deltacp_minus_chi2 = (TH1D*)h_deltacp_minus->Clone("h_deltacp_minus_chi2");
+      TH1D* h_deltam2_plus_chi2 = (TH1D*)h_deltam2_plus->Clone("h_deltam2_plus_chi2");
+      TH1D* h_deltam2_minus_chi2 = (TH1D*)h_deltam2_minus->Clone("h_deltam2_minus_chi2");
+
       double deltam2_chi2_plus=0.0,deltam2_chi2_minus=0.0; 
       for(int i=1;i<h_deltam2_cv->GetNbinsX()+1;i++){
-        if(h_deltam2_plus->GetBinError(i) > 0) deltam2_chi2_plus += pow((h_deltam2_plus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_plus->GetBinError(i),2); 
-        if(h_deltam2_minus->GetBinError(i) > 0) deltam2_chi2_minus += pow((h_deltam2_minus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_minus->GetBinError(i),2); 
+
+        double chi2_plus = pow((h_deltam2_plus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_plus->GetBinError(i),2);
+        if(h_deltam2_plus->GetBinError(i) > 0){
+          deltam2_chi2_plus += chi2_plus;
+          h_deltam2_plus_chi2->SetBinContent(i,chi2_plus);
+        }
+        else h_deltam2_plus_chi2->SetBinContent(i,0);
+
+        double chi2_minus = pow((h_deltam2_minus->GetBinContent(i) - h_deltam2_cv->GetBinContent(i))/h_deltam2_minus->GetBinError(i),2);
+        if(h_deltam2_minus->GetBinError(i) > 0){
+          deltam2_chi2_minus += chi2_minus;
+          h_deltam2_minus_chi2->SetBinContent(i,chi2_minus);
+        }
+        else h_deltam2_minus_chi2->SetBinContent(i,0);
+
       }
 
       double deltacp_chi2_plus=0.0,deltacp_chi2_minus=0.0; 
       for(int i=1;i<h_deltacp_cv->GetNbinsX()+1;i++){
-        if(h_deltacp_plus->GetBinError(i) > 0) deltacp_chi2_plus += pow((h_deltacp_plus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_plus->GetBinError(i),2); 
-        if(h_deltacp_minus->GetBinError(i) > 0)deltacp_chi2_minus += pow((h_deltacp_minus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_minus->GetBinError(i),2); 
+
+        double chi2_plus = pow((h_deltacp_plus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_plus->GetBinError(i),2);
+        if(h_deltacp_plus->GetBinError(i) > 0){
+          deltacp_chi2_plus += chi2_plus;
+          h_deltacp_plus_chi2->SetBinContent(i,chi2_plus);
+        }
+        else h_deltacp_plus_chi2->SetBinContent(i,0);
+
+        double chi2_minus = pow((h_deltacp_minus->GetBinContent(i) - h_deltacp_cv->GetBinContent(i))/h_deltacp_minus->GetBinError(i),2);
+        if(h_deltacp_minus->GetBinError(i) > 0){
+          deltacp_chi2_minus += chi2_minus;
+          h_deltacp_minus_chi2->SetBinContent(i,chi2_minus);
+        }
+        else h_deltacp_minus_chi2->SetBinContent(i,0);
+
       }
 
       std::cout << "DeltaCP Plus: " << sqrt(deltacp_chi2_plus) << " Minus: " << sqrt(deltacp_chi2_minus) << std::endl;
@@ -139,11 +178,64 @@ void SensitivityPlots(){
       g_chi2_deltacp_plus.at(i_e).back()->SetMarkerSize(size);
       g_chi2_deltacp_minus.at(i_e).back()->SetMarkerSize(size);
 
+
+      h_chi2_deltacp_plus_v.at(i_f).at(i_e) = h_deltacp_plus_chi2;
+      h_chi2_deltacp_minus_v.at(i_f).at(i_e) = h_deltacp_minus_chi2;
+      h_chi2_deltam2_plus_v.at(i_f).at(i_e) = h_deltam2_plus_chi2;
+      h_chi2_deltam2_minus_v.at(i_f).at(i_e) = h_deltam2_minus_chi2;
+
+      // Draw the histogram of the chi2 from each bin
+      if(draw_chi2_plots){
+
+        THStack* hs_m2 = new THStack("hs_m2",";E_{est} (GeV);#chi^{2}");
+
+        h_deltacp_plus_chi2->SetLineColor(colors.at(i_e));  
+        h_deltacp_plus_chi2->SetLineWidth(2);  
+        h_deltacp_plus_chi2->SetLineStyle(2);  
+        hs_m2->Add(h_deltacp_plus_chi2);
+        l->AddEntry(h_deltacp_plus_chi2,(estimators_leg.at(i_e)+" #Delta m^{2} Up").c_str(),"L");
+
+        h_deltacp_minus_chi2->SetLineColor(colors.at(i_e));  
+        h_deltacp_minus_chi2->SetLineWidth(2);  
+        h_deltacp_minus_chi2->SetLineStyle(3);  
+        hs_m2->Add(h_deltacp_minus_chi2);
+        l->AddEntry(h_deltacp_minus_chi2,(estimators_leg.at(i_e)+" #Delta m^{2} Down").c_str(),"L");
+
+        hs_m2->Draw("HIST nostack");
+        SetAxisFonts(hs_m2);
+        c->Print(("Plots/NuMu_Dist_"+gen+"_"+est+"_chi2.pdf").c_str());
+        p_plot->Clear();
+
+        delete hs_m2;
+        l->Clear();
+
+        THStack* hs_cp = new THStack("hs_cp",";E_{est} (GeV);#chi^{2}");
+
+        h_deltacp_plus_chi2->SetLineColor(colors.at(i_e));  
+        h_deltacp_plus_chi2->SetLineWidth(2);  
+        h_deltacp_plus_chi2->SetLineStyle(2);  
+        hs_cp->Add(h_deltacp_plus_chi2);
+        l->AddEntry(h_deltacp_plus_chi2,(estimators_leg.at(i_e)+" #delta_{CP} Up").c_str(),"L");
+
+        h_deltacp_minus_chi2->SetLineColor(colors.at(i_e));  
+        h_deltacp_minus_chi2->SetLineWidth(2);  
+        h_deltacp_minus_chi2->SetLineStyle(3);  
+        hs_cp->Add(h_deltacp_minus_chi2);
+        l->AddEntry(h_deltacp_minus_chi2,(estimators_leg.at(i_e)+" #delta_{CP} Down").c_str(),"L");
+
+        hs_cp->Draw("HIST nostack");
+        SetAxisFonts(hs_cp);
+        c->Print(("Plots/Nue_Dist_"+gen+"_"+est+"_chi2.pdf").c_str());
+        p_plot->Clear();
+
+        delete hs_cp;
+        l->Clear();
+
+      }
+
     }
 
   }
-
-  gSystem->Exec("mkdir -p Plots/");
 
   h_axes->Draw("HIST");
   SetAxisFontsH(h_axes); 
@@ -217,6 +309,81 @@ void SensitivityPlots(){
   if(!make_smear_plots) c->Print("Plots/DeltaCPMinusSen.pdf");
   else c->Print("Plots/SmearedDeltaCPMinusSen.pdf");
   p_plot->Clear();
+
+  l->Clear();
+
+
+  for(size_t i_f=0;i_f<Generators_v.size();i_f++){
+
+    std::string gen = Generators_v.at(i_f);
+    THStack* hs_m2_plus = new THStack("hs_m2_plus",";E_{est} (GeV);#chi^{2}");
+    THStack* hs_cp_plus = new THStack("hs_cp_plus",";E_{est} (GeV);#chi^{2}");
+    THStack* hs_m2_minus = new THStack("hs_m2_minus",";E_{est} (GeV);#chi^{2}");
+    THStack* hs_cp_minus = new THStack("hs_cp_minus",";E_{est} (GeV);#chi^{2}");
+
+    for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+
+      std::string est = estimators_str.at(i_e);
+      std::string est_leg = estimators_leg.at(i_e);
+
+      TH1D* h_deltacp_plus_chi2 = h_chi2_deltacp_plus_v.at(i_f).at(i_e);
+      TH1D* h_deltacp_minus_chi2 = h_chi2_deltacp_minus_v.at(i_f).at(i_e);
+      TH1D* h_deltam2_plus_chi2 = h_chi2_deltam2_plus_v.at(i_f).at(i_e);
+      TH1D* h_deltam2_minus_chi2 = h_chi2_deltam2_minus_v.at(i_f).at(i_e);
+
+      l->AddEntry(h_deltacp_plus_chi2,estimators_leg.at(i_e).c_str(),"L");
+
+      h_deltacp_plus_chi2->SetLineColor(colors.at(i_e));  
+      h_deltacp_plus_chi2->SetLineStyle(1);  
+      h_deltacp_plus_chi2->SetLineWidth(2);  
+      hs_cp_plus->Add(h_deltacp_plus_chi2);
+
+      h_deltacp_minus_chi2->SetLineColor(colors.at(i_e));  
+      h_deltacp_minus_chi2->SetLineStyle(1);  
+      h_deltacp_minus_chi2->SetLineWidth(2);  
+      hs_cp_minus->Add(h_deltacp_minus_chi2);
+
+      h_deltam2_plus_chi2->SetLineColor(colors.at(i_e));  
+      h_deltam2_plus_chi2->SetLineStyle(1);  
+      h_deltam2_plus_chi2->SetLineWidth(2);  
+      hs_m2_plus->Add(h_deltam2_plus_chi2);
+
+      h_deltam2_minus_chi2->SetLineColor(colors.at(i_e));  
+      h_deltam2_minus_chi2->SetLineStyle(1);  
+      h_deltam2_minus_chi2->SetLineWidth(2);  
+      hs_m2_minus->Add(h_deltam2_minus_chi2);
+
+    }
+
+    hs_m2_plus->Draw("HIST nostack");
+    SetAxisFonts(hs_m2_plus);
+    c->Print(("Plots/NuMu_Dist_"+gen+"_chi2_plus.pdf").c_str());
+    p_plot->Clear();
+
+    hs_m2_minus->Draw("HIST nostack");
+    SetAxisFonts(hs_m2_minus);
+    c->Print(("Plots/NuMu_Dist_"+gen+"_chi2_minus.pdf").c_str());
+    p_plot->Clear();
+
+    hs_cp_plus->Draw("HIST nostack");
+    SetAxisFonts(hs_cp_plus);
+    c->Print(("Plots/Nue_Dist_"+gen+"_chi2_plus.pdf").c_str());
+    p_plot->Clear();
+
+    hs_cp_minus->Draw("HIST nostack");
+    SetAxisFonts(hs_cp_minus);
+    c->Print(("Plots/Nue_Dist_"+gen+"_chi2_minus.pdf").c_str());
+    p_plot->Clear();
+
+    l->Clear();
+
+    delete hs_m2_plus;
+    delete hs_cp_plus;
+    delete hs_m2_minus;
+    delete hs_cp_minus;
+
+  }
+
 
 }
 
