@@ -8,7 +8,7 @@ void BiasVariancePlots(){
 
   PlotSetup();
 
-  bool draw_smeared = true;
+  bool draw_smeared = false;
   bool rebin = false;
 
   std::vector<std::string> InputFiles_v = {"GENIEEventsFiltered.root","NEUTEventsFiltered.root","GiBUUEventsFiltered.root","NuWroEventsFiltered.root"};
@@ -38,10 +38,10 @@ void BiasVariancePlots(){
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
       std::string estimator = estimators_str.at(i_e);
-      h_TrueEnergy_RecoEnergy.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
-      h_TrueEnergy_RecoEnergy_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared_"+estimator).c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
+      h_TrueEnergy_RecoEnergy.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_"+estimator).c_str(),"",true_nbins,true_binning_a,200,-2.0,10.0));
+      h_TrueEnergy_RecoEnergy_Smeared.at(i_e).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared_"+estimator).c_str(),"",true_nbins,true_binning_a,200,-2.0,10.0));
     }
-    h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared2_TotalEDep").c_str(),"",true_nbins,true_binning_a,200,-1.0,10.0));
+    h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).push_back(new TH2D((generator+"_TrueEnergy_RecoEnergy_Smeared2_TotalEDep").c_str(),"",true_nbins,true_binning_a,200,-2.0,10.0));
 
     TFile* f = TFile::Open(("/gluster/data/dune/cthorpe/DIS/"+InputFiles_v.at(i_f)).c_str());
     TTree* t = static_cast<TTree*>(f->Get("eventtree")) ;
@@ -141,7 +141,7 @@ void BiasVariancePlots(){
 
       h_Variance.back()->SetLineColor(colors.at(i_e));
       h_Variance.back()->SetLineWidth(2);
-      //hs_Variance->Add(h_Variance.back());
+      hs_Variance->Add(h_Variance.back());
 
       if(draw_smeared){
         h_Variance_Smeared.back()->SetLineColor(colors.at(i_e));
@@ -161,10 +161,13 @@ void BiasVariancePlots(){
     h_Bias_Smeared.push_back(new TH1D(("h_Bias_Smeared2_"+gen+"_TotalEDep").c_str(),"",true_nbins,true_binning_a));
     h_Variance_Smeared.push_back(new TH1D(("h_Variance_Smeared2_"+gen+"_TotalEDep").c_str(),"",true_nbins,true_binning_a));
     GetBiasVariance(h_TrueEnergy_RecoEnergy_Smeared.at(kMAX).at(i_f),h_Bias_Smeared.back(),h_Variance_Smeared.back()); 
-    h_Variance_Smeared.back()->SetLineColor(colors.at(kTotalEDep));
-    h_Variance_Smeared.back()->SetLineWidth(2);
-    h_Variance_Smeared.back()->SetLineStyle(2);
-    hs_Variance->Add(h_Variance_Smeared.back());
+
+    if(draw_smeared){
+      h_Variance_Smeared.back()->SetLineColor(colors.at(kTotalEDep));
+      h_Variance_Smeared.back()->SetLineWidth(2);
+      h_Variance_Smeared.back()->SetLineStyle(2);
+      hs_Variance->Add(h_Variance_Smeared.back());
+    }
 
     p_plot->cd();
     hs_Bias->Draw("nostack HIST");
@@ -215,6 +218,12 @@ void BiasVariancePlots(){
   }
 
   // Compare bias and variance between generators
+
+  THStack* hs_Mean_Bias = new THStack("hs_Mean_Bias",";True Neutrino Energy (GeV);Mean Bias");
+  //THStack* hs_Var_Bias = new THStack("hs_Var_Bias",";True Neutrino Energy (GeV);Variance in Bias");
+  THStack* hs_Var_Bias = new THStack("hs_Var_Bias",";True Neutrino Energy (GeV);SD in Bias");
+  std::vector<TH1D*> h_mean_bias_v,h_var_bias_v;
+
   for(size_t i_e=0;i_e<kMAX;i_e++){
 
     std::string est = estimators_str.at(i_e);
@@ -264,6 +273,63 @@ void BiasVariancePlots(){
 
     l->Clear();
 
+    // Calculate the SD of the bias curves
+    TH1D* h_mean_bias = (TH1D*)h_bias.back()->Clone(("h_mean_bias_"+est).c_str());
+    h_mean_bias->Reset();
+    for(TH1D* h : h_bias){
+      for(int i=1;i<h->GetNbinsX()+1;i++)
+        h_mean_bias->AddBinContent(i,h->GetBinContent(i));
+    } 
+    h_mean_bias->Scale(1.0/h_bias.size());    
+      
+    TH1D* h_var_bias = (TH1D*)h_bias.back()->Clone(("h_var_bias_"+est).c_str());
+    h_var_bias->Reset();
+    for(TH1D* h : h_bias){
+      for(int i=1;i<h->GetNbinsX()+1;i++)
+        h_var_bias->AddBinContent(i,pow(h->GetBinContent(i) - h_mean_bias->GetBinContent(i),2));
+    } 
+
+    for(int i=1;i<h_var_bias->GetNbinsX()+1;i++)
+       h_var_bias->SetBinContent(i,sqrt(h_var_bias->GetBinContent(i)));
+    
+    h_var_bias->Scale(1.0/(h_bias.size()-1));    
+
+    
+
+    //std::cout << est << std::endl;
+    //for(int i=1;i<h_mean_bias->GetNbinsX()+1;i++) std::cout << i <<  " " << h_mean_bias->GetBinContent(i) << " " << h_var_bias->GetBinContent(i) << std::endl;
+
+    hs_Mean_Bias->Add(h_mean_bias);
+    h_mean_bias->SetLineWidth(2);
+    h_mean_bias->SetLineStyle(1);
+    h_mean_bias->SetLineColor(colors.at(i_e));
+    h_mean_bias_v.push_back(h_mean_bias);
+    
+
+    hs_Var_Bias->Add(h_var_bias);
+    h_var_bias->SetLineWidth(2);
+    h_var_bias->SetLineStyle(1);
+    h_var_bias->SetLineColor(colors.at(i_e));
+    h_var_bias_v.push_back(h_var_bias);
+ 
+    //delete h_mean_bias;
+    //delete h_var_bias;
+
   }
+
+  for(size_t i_e=0;i_e<kMAX;i_e++) l->AddEntry(h_mean_bias_v.at(i_e),estimators_str.at(i_e).c_str(),"L");
+  
+  p_plot->cd();
+  hs_Mean_Bias->Draw("nostack HIST");
+  SetAxisFonts(hs_Mean_Bias);
+  c->Print("Plots/Gen_Mean_Bias.pdf"); 
+  p_plot->Clear();
+
+  p_plot->cd();
+  hs_Var_Bias->Draw("nostack HIST");
+  SetAxisFonts(hs_Var_Bias);
+  c->Print("Plots/Gen_Var_Bias.pdf"); 
+  p_plot->Clear();
+ 
 
 }
