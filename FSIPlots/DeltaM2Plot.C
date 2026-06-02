@@ -190,10 +190,47 @@ void DeltaM2Plot(){
     SetAxisFonts(hs);
     c->Print(("Plots/DeltaM2FitResults_"+gen+".pdf").c_str());
     p_plot->Clear();
+    //l->Clear();
+
+    // Renormalise plot to show change as number of sigmas instead
+    THStack* hs_alt = new THStack("hs_alt",";Input #Delta m^{2}_{23} (eV^{2});#frac{Meas. #Delta m^{2}_{23}}{Input #Delta m^{2}_{23}} - 1    (Std. Deviations)");
+    const double one_sigma = c_osc::deltamsq23_sigma/c_osc::deltamsq23; 
+    min_fit_ratio = 1e10;
+    max_fit_ratio = -1e10;
+    for(size_t i_e=0;i_e<estimators_str.size();i_e++){
+      if(i_e == kMuonKin) continue;
+      TH1D* h = h_fit_results.at(i_e);
+      for(int i_b=1;i_b<h->GetNbinsX()+1;i_b++){
+        h->SetBinContent(i_b,(h->GetBinContent(i_b) - 1.0)/one_sigma);
+        min_fit_ratio = std::min(h->GetBinContent(i_b),min_fit_ratio); 
+        max_fit_ratio = std::max(h->GetBinContent(i_b),max_fit_ratio); 
+      }
+      hs_alt->Add(h);
+    }
+   
+    p_plot->SetLeftMargin(0.13);
+ 
+    hs_alt->Draw("HIST nostack"); 
+    hs_alt->SetMinimum(min_fit_ratio-0.1*(max_fit_ratio-min_fit_ratio));
+    hs_alt->SetMaximum(max_fit_ratio+0.1*(max_fit_ratio-min_fit_ratio));
+ 
+    TF1* f_line_2 = new TF1("f_line_2","0",-1000,1000);
+    f_line_2->SetLineColor(1);  
+    f_line_2->SetLineWidth(2);
+    f_line_2->SetLineStyle(9);
+    f_line_2->Draw("L same");
+
+    hs_alt->GetXaxis()->SetNdivisions(6);
+    hs_alt->GetYaxis()->SetNdivisions(6);
+    SetAxisFonts(hs_alt);
+
+    c->Print(("Plots/DeltaM2FitResults_"+gen+"_AltScale.pdf").c_str());
+    p_plot->Clear();
     l->Clear();
 
     delete hs;
     delete f_line;
+    delete f_line_2;
 
   }
 

@@ -89,7 +89,7 @@ void FSIStudy(){
 
     for(Long64_t ievent=0;ievent<t->GetEntries();ievent++){
 
-      //if(ievent > 100000) break;
+      //if(ievent > 200000) break;
       if(ievent % 50000 == 0) std::cout << generator << " Event " << ievent << "/" << t->GetEntries() << std::endl;
       t->GetEntry(ievent);
 
@@ -420,13 +420,14 @@ void FSIStudy(){
 
   }
 
+  p_plot->SetLogy();
 
   // Calculate the change in the estimated energy from adding FSI
   for(size_t i_f=0;i_f<InputFiles_v.size();i_f++){
 
     std::string gen = Generators_v.at(i_f);
-    THStack* hs_Change = new THStack(("hs_Change"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};");
-    THStack* hs_Change_Smeared = new THStack(("hs_Change_Smeared"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};");
+    THStack* hs_Change = new THStack(("hs_Change"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};Prob Mass Func.");
+    THStack* hs_Change_Smeared = new THStack(("hs_Change_Smeared"+gen).c_str(),";(_{}E_{est}^{FSI} - E_{est}^{No FSI})/E_{est}^{No FSI};Prob Mass Func.");
 
     for(size_t i_e=0;i_e<kMAX;i_e++){
 
@@ -438,12 +439,14 @@ void FSIStudy(){
       h->SetLineWidth(2);
       h->SetLineColor(colors.at(i_e));
       hs_Change->Add(h);
+      hs_Change->SetMinimum(1e-3);
 
       TH1D* h_Smeared = h_Change_Smeared.at(i_e).at(i_f); 
       h_Smeared->Scale(1.0/h_Smeared->Integral());
       h_Smeared->SetLineWidth(2);
       h_Smeared->SetLineColor(colors.at(i_e));
       hs_Change_Smeared->Add(h_Smeared);
+      hs_Change_Smeared->SetMinimum(1e-3);
 
       l->AddEntry(h,estimators_leg.at(i_e).c_str(),"L"); 
 
@@ -462,6 +465,8 @@ void FSIStudy(){
     l->Clear();
 
   }
+
+  p_plot->SetLogy(0);
 
 
   // Calculate the change in the estimated energy from adding FSI
